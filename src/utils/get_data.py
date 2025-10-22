@@ -1,4 +1,4 @@
-from config import url1, url2, RAW_DIR
+from config import caract2023, radar2023, RAW_DIR
 from pathlib import Path
 import requests
 import zipfile
@@ -26,7 +26,7 @@ def _download_and_extract_csvs(url, dest_dir):
     if "zip" in content_type or filename.lower().endswith(".zip"):
         with zipfile.ZipFile(io.BytesIO(content)) as z:
             for member in z.namelist():
-                # on prend uniquement le nom de fichier pour éviter path traversal
+                # on prend uniquement le nom de fichier 
                 name = Path(member).name
                 if name.lower().endswith(".csv"):
                     target = dest_dir / name
@@ -41,7 +41,7 @@ def _download_and_extract_csvs(url, dest_dir):
             out_paths.append(target)
         return out_paths
 
-    # fichier direct (souvent CSV)
+    # fichier direct
     target = dest_dir / filename
     with target.open("wb") as f:
         f.write(content)
@@ -69,7 +69,7 @@ def get_dataset_from_source(src, name, force_download=False):
         logger.info("Chargement depuis le cache %s (%d fichiers)", target_dir, len(cached_csvs))
         return _load_csvs(cached_csvs)
 
-    # on considère src comme l'URL que tu fournis (pas de traitement supplémentaire)
+    # on considère src comme l'URL fournis
     urls = [str(src).strip()]
 
     all_csv_paths = []
@@ -87,11 +87,11 @@ def get_dataset_from_source(src, name, force_download=False):
 
 
 def get_data1(force_download=False):
-    return get_dataset_from_source(url1, "data1", force_download=force_download)
+    return get_dataset_from_source(caract2023, "data1", force_download=force_download)
 
 
 def get_data2(force_download=False):
-    return get_dataset_from_source(url2, "data2", force_download=force_download)
+    return get_dataset_from_source(radar2023, "data2", force_download=force_download)
 
 
 if __name__ == "__main__":
