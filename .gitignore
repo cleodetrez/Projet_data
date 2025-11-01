@@ -1,4 +1,11 @@
-/data/raw/caracterisques.csv
-/data/raw/radars-2023.csv
-/db/__pycache__/
-__pycache__/
+# Fichiers spécifiques
+data/raw/caracterisques.csv
+data/raw/radars-2023.csv
+
+# Dossiers Python
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Dossier db cache
+db/__pycache__/
