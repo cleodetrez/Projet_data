@@ -1,108 +1,70 @@
-from config import caract2023, radar2023, RAW_DIR
+from config import caract_csv_url, radar_csv_url, raw_dir
 from pathlib import Path
 import requests
-import zipfile
-import io
-import logging
 import pandas as pd
+import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CACHE_DIR = Path(RAW_DIR)
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
+raw_dir.mkdir(parents=True, exist_ok=True)
 
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'DNT': '1',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Cache-Control': 'max-age=0'
+}
 
-def _download_and_extract_csvs(url, dest_dir):
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    logger.info("Téléchargement : %s", url)
-    r = requests.get(url, stream=True, timeout=60)
-    r.raise_for_status()
-    filename = url.split("/")[-1].split("?")[0] or "resource"
-    content = r.content
-    content_type = r.headers.get("content-type", "").lower()
-    out_paths = []
+def dl_csv(url, nom_fichier):
+    chemin_fichier = raw_dir / nom_fichier
+    if chemin_fichier.exists():
+        logger.info(f"fichier {nom_fichier} trouve, chargement depuis le cache.")
+        return pd.read_csv(chemin_fichier, low_memory=False, sep=';')
 
-    if "zip" in content_type or filename.lower().endswith(".zip"):
-        with zipfile.ZipFile(io.BytesIO(content)) as z:
-            for member in z.namelist():
-                # on prend uniquement le nom de fichier 
-                name = Path(member).name
-                if name.lower().endswith(".csv"):
-                    target = dest_dir / name
-                    with target.open("wb") as f:
-                        f.write(z.read(member))
-                    out_paths.append(target)
-        # si aucun CSV extrait, sauvegarder le zip
-        if not out_paths:
-            target = dest_dir / filename
-            with target.open("wb") as f:
-                f.write(content)
-            out_paths.append(target)
-        return out_paths
+    logger.info(f"telechargement de {nom_fichier}...")
+    try:
+        r = requests.get(url, stream=True, timeout=60, headers=headers)
+        r.raise_for_status()
+        
+        with chemin_fichier.open("wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        logger.info(f"telechargement de {nom_fichier} termine.")
+        return pd.read_csv(chemin_fichier, low_memory=False, sep=';')
 
-    # fichier direct
-    target = dest_dir / filename
-    with target.open("wb") as f:
-        f.write(content)
-    return [target]
+    except requests.RequestException as e:
+        logger.error(f"erreur lors du telechargement de {nom_fichier}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"erreur lors de la lecture du fichier {nom_fichier}: {e}")
+        logger.error("le contenu telecharge n'est peut-etre pas un csv valide.")
+        raise
 
+def get_caract_2023(force_download=False):
+    return dl_csv(caract_csv_url, "caracteristiques-2023.csv")
 
-def _load_csvs(paths):
-    dfs = []
-    for p in paths:
-        try:
-            dfs.append(pd.read_csv(p, low_memory=False))
-        except Exception as e:
-            logger.warning("Impossible de lire %s : %s", p, e)
-    if not dfs:
-        raise RuntimeError("Aucun CSV valide n'a été chargé.")
-    return pd.concat(dfs, ignore_index=True, sort=False)
-
-
-def get_dataset_from_source(src, name, force_download=False):
-    target_dir = CACHE_DIR / name
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    cached_csvs = list(target_dir.glob("*.csv"))
-    if cached_csvs and not force_download:
-        logger.info("Chargement depuis le cache %s (%d fichiers)", target_dir, len(cached_csvs))
-        return _load_csvs(cached_csvs)
-
-    # on considère src comme l'URL fournis
-    urls = [str(src).strip()]
-
-    all_csv_paths = []
-    for u in urls:
-        try:
-            paths = _download_and_extract_csvs(u, target_dir)
-            all_csv_paths.extend([p for p in paths if p.suffix.lower() == ".csv"])
-        except Exception as e:
-            logger.warning("Erreur téléchargement %s : %s", u, e)
-
-    if not all_csv_paths:
-        raise RuntimeError(f"Aucun CSV trouvé pour la source : {src}")
-
-    return _load_csvs(all_csv_paths)
-
-
-def get_data1(force_download=False):
-    return get_dataset_from_source(caract2023, "data1", force_download=force_download)
-
-
-def get_data2(force_download=False):
-    return get_dataset_from_source(radar2023, "data2", force_download=force_download)
-
+def get_radar_2023(force_download=False):
+    return dl_csv(radar_csv_url, "radars-2023.csv")
 
 if __name__ == "__main__":
     try:
-        df1 = get_data1()
-        logger.info("data1: %d lignes, %d colonnes", df1.shape[0], df1.shape[1])
+        df_caract = get_caract_2023()
+        logger.info(f"donnees caracteristiques 2023 chargees : {df_caract.shape[0]} lignes, {df_caract.shape[1]} colonnes.")
     except Exception as e:
-        logger.error("Échec data1: %s", e)
+        logger.error(f"echec du chargement des donnees caracteristiques 2023: {e}")
 
     try:
-        df2 = get_data2()
-        logger.info("data2: %d lignes, %d colonnes", df2.shape[0], df2.shape[1])
+        df_radar = get_radar_2023()
+        logger.info(f"donnees radars 2023 chargees : {df_radar.shape[0]} lignes, {df_radar.shape[1]} colonnes.")
     except Exception as e:
-        logger.error("Échec data2: %s", e)
+        logger.error(f"echec du chargement des donnees radars 2023: {e}")
