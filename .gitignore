@@ -1,11 +1,15 @@
 # Fichiers spécifiques
 data/raw/caracterisques.csv
 data/raw/radars-2023.csv
+data/cleaned/radars_delta_clean.csv
+data/cleaned/caract_clean.csv
+
 
 # Dossiers Python
 **/__pycache__/
 *.pyc
 *.pyo
+
 
 # Dossier db cache
 db/__pycache__/
