@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config import caract_csv_url, radar_csv_url, raw_dir
 from pathlib import Path
 import requests
