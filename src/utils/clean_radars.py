@@ -1,4 +1,3 @@
-clean_data.py
 """
 - delta_v = mesure - limite
 - extrait heure depuis la date
