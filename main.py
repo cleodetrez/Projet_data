@@ -3,9 +3,10 @@ from src.utils.get_data import get_caract_2023, get_radar_2023
 from src.utils.clean_caract_2023 import clean_caract
 from src.utils.clean_radars_2023 import clean_radars
 from src.utils.merge_data import merge_cleaned_year
+from src.pages.setup import render_setup_page, STEP_FLOW
+from src.pages.home import layout as home_layout
 
 
-# Configuration du logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -13,46 +14,75 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def main():
+def run_data_pipeline(log_messages):
+    """
+    Simule le chargement des données avec logs pour le loader.
+    """
     try:
-        # 1. Téléchargement des données brutes
-        logger.info("Début du téléchargement des données...")
+        # Étape 1 : Téléchargement
+        log_messages.append("[STEP] Téléchargement du CSV")
         get_caract_2023()
         get_radar_2023()
-        logger.info("Téléchargement terminé.")
 
-
-        # 2. Nettoyage des données
-        logger.info("Début du nettoyage des données...")
-       
-        # Nettoyage des caractéristiques d'accidents
-        logger.info("Nettoyage des données d'accidents...")
+        # Étape 2 : Nettoyage
+        log_messages.append("[STEP] Initialisation de la base SQLite")
         df_caract_clean = clean_caract()
-        logger.info(f"Données d'accidents nettoyées: {len(df_caract_clean)} entrées")
-
-
-        # Nettoyage des données radar
-        logger.info("Nettoyage des données radar...")
         df_radars_clean = clean_radars()
-        logger.info(f"Données radar nettoyées: {len(df_radars_clean)} entrées")
 
+        # Étape 3 : Fusion
+        log_messages.append("[STEP] Vérification des données")
+        merge_cleaned_year(None, primary_key='acc_id')
 
-        logger.info("Processus de traitement des données terminé : nettoyage ok.")
-
-
-        # 3. Fusion des fichiers nettoyés
-        logger.info("Fusion des fichiers nettoyés (tous) ...")
-        try:
-            merged = merge_cleaned_year(None, primary_key='acc_id')
-            logger.info(f"Fichier fusionné généré : {merged}")
-        except Exception as me:
-            logger.warning(f"La fusion des fichiers nettoyés a échoué : {me}")
-
-
+        log_messages.append("[STEP] Initialisation terminée")
+        return True  # succès
     except Exception as e:
-        logger.error(f"Une erreur est survenue: {str(e)}")
-        raise
+        logger.error(f"Erreur dans la pipeline: {e}")
+        log_messages.append(str(e))
+        return False
+
+#dashboard
+from dash import Dash, html, dcc, Output, Input
+
+app = Dash(__name__)
+log_messages = []
+
+app.layout = html.Div([
+    dcc.Interval(id="interval-loader", interval=1000, n_intervals=0),
+    html.Div(id="page-content")
+])
+
+# variable globale pour simuler la progression
+progress_step = 0
+success = False
+completed = False
+
+@app.callback(
+    Output("page-content", "children"),
+    Input("interval-loader", "n_intervals")
+)
+def update_loader(n):
+    global progress_step, success, completed
+
+    # Si le traitement n'est pas terminé, on affiche le loader
+    if not completed:
+        if progress_step < len(STEP_FLOW):
+            step = STEP_FLOW[progress_step]
+            log_messages.append(f"[STEP] {step}")
+            progress_step += 1
+            return render_setup_page(log_messages, step, completed=False, success=False)
+        else:
+            # Lance la vraie préparation (tu peux le faire en thread si long)
+            success = run_data_pipeline(log_messages)
+            completed = True
+            return render_setup_page(log_messages, "Initialisation terminée", completed=True, success=success)
+    else:
+        # Si c'est fini → afficher la page principale
+        if success:
+            return home_layout
+        else:
+            return html.Div("Erreur : l'initialisation a échoué.", style={"color": "red"})
+
 
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)
