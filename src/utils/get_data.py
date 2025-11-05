@@ -3,6 +3,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config import caract_csv_url, radar_csv_url, raw_dir
 from pathlib import Path
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 import requests
 import pandas as pd
 import logging
@@ -26,6 +28,10 @@ headers = {
     'Sec-Fetch-User': '?1',
     'Cache-Control': 'max-age=0'
 }
+
+DATABASE_URL = "sqlite:///data/cleaned/database.db"
+engine = create_engine(DATABASE_URL)
+Session = sessionmaker(bind=engine)
 
 def dl_csv(url, nom_fichier):
     chemin_fichier = raw_dir / nom_fichier
@@ -53,21 +59,72 @@ def dl_csv(url, nom_fichier):
         logger.error("le contenu telecharge n'est peut-etre pas un csv valide.")
         raise
 
+def init_db():
+    # Créer les tables
+    with engine.connect() as conn:
+        conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS caracteristiques (
+            Num_Acc TEXT PRIMARY KEY,
+            lat FLOAT,
+            long FLOAT,
+            date TEXT,
+            departement TEXT
+        )
+        """))
+        conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS radars (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lat FLOAT,
+            long FLOAT,
+            departement TEXT,
+            type TEXT
+        )
+        """))
+        conn.commit()
+
+def save_to_db(df, table_name):
+    """Sauvegarde un DataFrame dans la base de données"""
+    df.to_sql(table_name, engine, if_exists='replace', index=False)
+
 def get_caract_2023(force_download=False):
-    return dl_csv(caract_csv_url, "caracteristiques-2023.csv")
+    df = dl_csv(caract_csv_url, "caracteristiques-2023.csv")
+    save_to_db(df, 'caracteristiques')
+    return df
 
 def get_radar_2023(force_download=False):
-    return dl_csv(radar_csv_url, "radars-2023.csv")
+    df = dl_csv(radar_csv_url, "radars-2023.csv")
+    save_to_db(df, 'radars')
+    return df
+
+def query_db(query, params=None):
+    """Exécute une requête SQL"""
+    with Session() as session:
+        result = session.execute(text(query), params or {})
+        return pd.DataFrame(result.fetchall(), columns=result.keys())
+
+# Exemple de fonction utilisant une requête SQL
+def get_accidents_by_department(department):
+    query = """
+    SELECT * FROM caracteristiques 
+    WHERE departement = :dept
+    """
+    return query_db(query, {"dept": department})
 
 if __name__ == "__main__":
     try:
+        # Initialiser la base de données
+        init_db()
+        
+        # Charger les données
         df_caract = get_caract_2023()
         logger.info(f"donnees caracteristiques 2023 chargees : {df_caract.shape[0]} lignes, {df_caract.shape[1]} colonnes.")
-    except Exception as e:
-        logger.error(f"echec du chargement des donnees caracteristiques 2023: {e}")
-
-    try:
+        
         df_radar = get_radar_2023()
         logger.info(f"donnees radars 2023 chargees : {df_radar.shape[0]} lignes, {df_radar.shape[1]} colonnes.")
+        
+        # Exemple d'utilisation d'une requête
+        result = get_accidents_by_department("75")
+        logger.info(f"Nombre d'accidents à Paris : {len(result)}")
+        
     except Exception as e:
-        logger.error(f"echec du chargement des donnees radars 2023: {e}")
+        logger.error(f"Erreur : {e}")
