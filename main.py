@@ -2,6 +2,7 @@ import logging
 from src.utils.get_data import get_caract_2023, get_radar_2023
 from src.utils.clean_caract_2023 import clean_caract
 from src.utils.clean_radars_2023 import clean_radars
+from src.utils.merge_data import merge_cleaned_year
 
 # Configuration du logging
 logging.basicConfig(
@@ -31,7 +32,15 @@ def main():
         df_radars_clean = clean_radars()
         logger.info(f"Données radar nettoyées: {len(df_radars_clean)} entrées")
 
-        logger.info("Processus de traitement des données terminé avec succès!")
+        logger.info("Processus de traitement des données terminé : nettoyage ok.")
+
+        # 3. Fusion des fichiers nettoyés
+        logger.info("Fusion des fichiers nettoyés (tous) ...")
+        try:
+            merged = merge_cleaned_year(None, primary_key='acc_id')
+            logger.info(f"Fichier fusionné généré : {merged}")
+        except Exception as me:
+            logger.warning(f"La fusion des fichiers nettoyés a échoué : {me}")
 
     except Exception as e:
         logger.error(f"Une erreur est survenue: {str(e)}")
