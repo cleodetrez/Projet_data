@@ -3,7 +3,7 @@ data/raw/caracterisques.csv
 data/raw/radars-2023.csv
 data/cleaned/radars_delta_clean.csv
 data/cleaned/caract_clean.csv
-data/cleaned/database.db
+bdd/database.db
 
 
 # Dossiers Python

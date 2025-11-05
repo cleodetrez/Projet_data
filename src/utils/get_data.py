@@ -29,7 +29,7 @@ headers = {
     'Cache-Control': 'max-age=0'
 }
 
-DATABASE_URL = "sqlite:///data/cleaned/database.db"
+DATABASE_URL = "sqlite:///bdd/database.db"
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 
