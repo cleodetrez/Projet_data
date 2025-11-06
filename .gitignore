@@ -5,7 +5,7 @@ data/cleaned/radars_delta_clean.csv
 data/cleaned/caract_clean.csv
 bdd/database.db
 data/cleaned/cleaned_2023.csv
-
+data/cleaned/cleaned_all.csv
 
 # Dossiers Python
 **/__pycache__/
