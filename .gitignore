@@ -6,6 +6,7 @@ data/cleaned/caract_clean.csv
 bdd/database.db
 data/cleaned/cleaned_2023.csv
 data/cleaned/cleaned_all.csv
+data/communes.geojson
 
 # Dossiers Python
 **/__pycache__/
