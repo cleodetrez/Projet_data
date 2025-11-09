@@ -114,7 +114,8 @@ def render_page(_):
         )
 
     if STATE["success"]:
-        return home_layout, True
+        # Call home_layout() instead of returning the function reference
+        return home_layout(), True
     else:
         return html.Div(
             [
