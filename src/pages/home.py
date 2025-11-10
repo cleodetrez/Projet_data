@@ -32,99 +32,65 @@ def _make_top_dept_figure(year: int = 2023):
     except Exception as e:
         return px.bar(title=f"Erreur lecture données: {e}")
     
-# ...existing code...
-
-def _get_median_distance_to_radar():
-    """Calcule la distance médiane au radar le plus proche"""
+def _make_speed_histogram(year: int = 2023, bins: int = 30):
+    """
+    Histogramme du nombre des différentes vitesses mesurées.
+    Utilise la table 'radars' et la colonne 'mesure'.
+    Filtre sur l'année si la colonne 'annee' ou 'datetime' existe.
+    """
     try:
         sql = """
-        WITH distances AS (
-            SELECT 
-                c.acc_id,
-                MIN(
-                    6371 * 2 * ASIN(
-                        SQRT(
-                            POW(SIN((r.lat - c.lat_acc) * PI() / 180 / 2), 2) +
-                            COS(c.lat_acc * PI() / 180) * COS(r.lat * PI() / 180) *
-                            POW(SIN((r.lon - c.lon_acc) * PI() / 180 / 2), 2)
-                        )
-                    )
-                ) as distance_km
-            FROM caracteristiques c
-            CROSS JOIN radars r
-            GROUP BY c.acc_id
-        )
-        SELECT ROUND(AVG(distance_km), 1) as median_distance
-        FROM (
-            SELECT distance_km
-            FROM distances
-            ORDER BY distance_km
-            LIMIT 2 - (SELECT COUNT(*) FROM distances) % 2
-            OFFSET (SELECT (COUNT(*) - 1) / 2 FROM distances)
-        );
+        SELECT mesure AS speed, annee, datetime
+        FROM radars
+        WHERE mesure IS NOT NULL
+          AND (
+                annee = :year
+                OR (datetime IS NOT NULL AND strftime('%Y', datetime) = :year_str)
+              )
         """
-        result = query_db(sql)
-        if result is None or result.empty:
-            return None
-        return result.iloc[0]['median_distance']
+        df = query_db(sql, {"year": year, "year_str": str(year)})
+        if df is None or df.empty:
+            return px.histogram(title="Aucune mesure de vitesse disponible")
+        df["speed"] = pd.to_numeric(df["speed"], errors="coerce")
+        df = df.dropna(subset=["speed"])
+        if df.empty:
+            return px.histogram(title="Aucune mesure de vitesse numérique")
+        fig = px.histogram(df, x="speed", nbins=bins,
+                           title=f"Distribution des vitesses mesurées ({year})",
+                           labels={"speed": "Vitesse (km/h)", "count": "Nombre de mesures"})
+        fig.update_layout(bargap=0.05, template="plotly_white")
+        return fig
     except Exception as e:
-        print(f"Erreur calcul distance médiane: {e}")
-        return None
+        return px.histogram(title=f"Erreur génération histogramme: {e}")
+
+def _get_median_distance_to_radar():
+    return None
 
 def _create_kpi_bar():
-    """Crée la barre de KPI"""
-    median_dist = _get_median_distance_to_radar()
-    
-    return html.Div([
-        html.Div([
-            html.H4("Distance médiane au radar le plus proche", 
-                   style={'color': '#2c3e50', 'margin': '0'}),
-            html.Div([
-                html.Span(
-                    f"{median_dist:.1f} km" if median_dist else "N/A",
-                    style={
-                        'fontSize': '24px',
-                        'fontWeight': 'bold',
-                        'color': '#3498db'
-                    }
-                )
-            ])
-        ], style={
-            'backgroundColor': 'white',
-            'padding': '20px',
-            'borderRadius': '8px',
-            'boxShadow': '0 2px 4px rgba(0,0,0,0.1)',
-            'textAlign': 'center',
-            'margin': '10px'
-        })
-    ], style={
-        'display': 'flex',
-        'justifyContent': 'center',
-        'padding': '20px',
-        'backgroundColor': '#f8f9fa'
-    })
+    return html.Div()
 
 def layout():
     """Page d'accueil : affiche carte + graphiques directement (pas de liens)."""
     bar_fig = _make_top_dept_figure(2023)
-
-    return html.Div([
-        # Barre de KPI en haut
-        _create_kpi_bar(),
-        
-        # Reste du layout existant
-        html.H1("Dashboard — Accidents et Radars", 
-                style={"textAlign": "center", "marginBottom": "8px"}),
-        # ...existing code...
-    ], style={"padding": "8px"})
+    speed_fig = _make_speed_histogram(2023, bins=40)
 
     return html.Div(
         [
             html.H1("Dashboard — Accidents et Radars", style={"textAlign": "center", "marginBottom": "8px"}),
             html.P("Vue d'ensemble — carte et statistiques (chargées immédiatement).", style={"textAlign": "center", "marginTop": 0}),
-            # inclure la carte (la fonction carte_layout retourne un Div complet)
+
+            # Carte (déjà définie dans src/pages/carte.py)
             carte_layout(),
-            # afficher un graphique immédiatement sous la carte
+
+            # Histogramme des vitesses
+            html.Div(
+                [
+                    dcc.Graph(id="home-speed-hist", figure=speed_fig),
+                ],
+                style={"maxWidth": "1100px", "margin": "24px auto", "padding": "12px"},
+            ),
+
+            # Top departments bar
             html.Div(
                 [
                     dcc.Graph(id="home-top-dept", figure=bar_fig),

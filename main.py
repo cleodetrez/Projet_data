@@ -127,30 +127,26 @@ def render_page(_):
 
 
 def main(run_pipeline: bool = False, run_dash: bool = True):
-    """Point d'entrée principal.
-    
-    Args:
-        run_pipeline: Si True, exécute le pipeline de données
-        run_dash: Si True, lance le dashboard
-    """
+    """Point d'entrée principal."""
     if run_pipeline:
-        logger.info("Démarrage du pipeline de données...")
+        logger.info("Démarrage synchrone du pipeline de données...")
         STATE["started"] = True
         run_data_pipeline()
         if not STATE["success"]:
             logger.error("Pipeline échoué. Voir les logs pour plus de détails.")
             sys.exit(1)
         logger.info("Pipeline terminé avec succès.")
-        
+
     if run_dash:
-        if not check_clean_files_exist():
-            logger.error(
-                "Les fichiers de données nettoyées n'existent pas. "
-                "Exécutez d'abord le pipeline : python main.py --pipeline"
-            )
-            sys.exit(1)
+        # Ne bloque pas le démarrage du dashboard si les fichiers nettoyés manquent :
+        if not check_clean_files_exist() and not run_pipeline:
+            logger.warning("Fichiers nettoyés absents — le pipeline sera lancé en arrière-plan.")
+            STATE["started"] = True
+            threading.Thread(target=run_data_pipeline, daemon=True).start()
+
         logger.info("Démarrage du dashboard...")
-        app.run(debug=False, use_reloader=False)
+        # app.run_server est obsolète -> utiliser app.run
+        app.run(debug=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Application d'analyse d'accidentologie")
