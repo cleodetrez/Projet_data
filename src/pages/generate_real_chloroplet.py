@@ -9,7 +9,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Charger le CSV
-df = pd.read_csv('caract-2023-TRANSFORMED.csv', sep=';')
+df = pd.read_csv('caract-2023.csv', sep=';')
 
 # Nettoyer les données
 df['lat'] = pd.to_numeric(df['lat'].astype(str).str.replace(',', '.').str.strip(), errors='coerce')

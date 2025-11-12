@@ -9,8 +9,17 @@ warnings.filterwarnings('ignore')
 print("Chargement des données...")
 
 # chargement des deux csv
-df_accidents = pd.read_csv('caract-2023.csv', sep=';')
-df_arrondissements = pd.read_csv('communes_avec_arrondissements.csv', sep=';')
+# Le fichier `caract_clean.csv` utilise des virgules comme séparateur; on laisse pandas détecter
+try:
+    df_accidents = pd.read_csv('data/cleaned/caract_clean.csv', sep=None, engine='python')
+except Exception:
+    # fallback si détection échoue
+    df_accidents = pd.read_csv('data/cleaned/caract_clean.csv')
+
+df_arrondissements = pd.read_csv('data/cleaned/communes_avec_arrondissements.csv', sep=';')
+
+# Debug: afficher les colonnes trouvées (aide au diagnostic)
+print(f"Colonnes accidents: {list(df_accidents.columns)}")
 
 print(f"Accidents: {len(df_accidents)} lignes")
 print(f"Arrondissements: {len(df_arrondissements)} lignes")
@@ -57,4 +66,4 @@ print(f"\n CSV transformé sauvegardé: caract-2023-TRANSFORMED.csv")
 print(f"\n Statistiques:")
 print(f"   • Total lignes: {len(df_accidents_transformed)}")
 print(f"   • Communes uniques: {df_accidents_transformed['com'].nunique()}")
-print(f"   • Avec coordonnées valides: {df_accidents_transformed.dropna(subset=['lat', 'long']).shape[0]}")
+print(f"   • Avec coordonnées valides: {df_accidents_transformed.dropna(subset=['lat_acc', 'lon_acc']).shape[0]}")
