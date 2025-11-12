@@ -52,7 +52,7 @@ print(f"   • Lignes modifiées: {changes}")
 # Afficher les communes modifiées
 modified = df_accidents[df_accidents['com_original'] != df_accidents['com']]
 if len(modified) > 0:
-    print(f"\n📍 Exemples de transformations:")
+    print(f"\n Exemples de transformations:")
     for orig, new in zip(modified['com_original'].unique()[:10], modified['com'].unique()[:10]):
         print(f"   - {orig} -> {new}")
 

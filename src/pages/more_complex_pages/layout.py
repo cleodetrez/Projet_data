@@ -4,24 +4,20 @@ from __future__ import annotations
 
 from dash import html, dcc, Input, Output, callback
 
-# imports des pages avec repli si le package 'src.' n'est pas utilisé
+# résolution des layouts avec imports groupés et repli
 try:
-    from src.pages.home import layout as home_layout
-except ImportError:
-    from pages.home import layout as home_layout  # type: ignore
-
-try:
-    from src.pages.about import layout as about_layout
-except ImportError:
-    from pages.about import layout as about_layout  # type: ignore
-
-try:
-    from src.pages.carte import layout as carte_layout
+    from src.pages import home as _home, about as _about, carte as _carte  # type: ignore
+    home_layout = _home.layout
+    about_layout = _about.layout
+    carte_layout = _carte.layout
 except ImportError:
     try:
-        from pages.carte import layout as carte_layout  # type: ignore
+        from pages import home as _home, about as _about, carte as _carte  # type: ignore
+        home_layout = _home.layout
+        about_layout = _about.layout
+        carte_layout = _carte.layout
     except ImportError:
-        def carte_layout():
+        def carte_layout() -> html.Div:
             """vue de secours quand la page carte est indisponible."""
             return html.Div("page 'carte' non disponible.", style={"padding": "20px"})
 
@@ -67,10 +63,8 @@ def shell_layout() -> html.Div:
             html.Div(id="page-content", style={"padding": "24px"}),
         ],
         style={
-            # découpé pour respecter 100 caractères/ligne
             "fontFamily": (
-                "Inter, system-ui, -apple-system, Segoe UI, Roboto, "
-                "sans-serif"
+                "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
             ),
             "backgroundColor": "#f8fafc",
             "minHeight": "100vh",
