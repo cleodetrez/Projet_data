@@ -1,34 +1,41 @@
-"""
-Carte choroplèthe par département (version Flask)
-"""
+"""carte choroplèthe par département (version flask)."""
+
 from __future__ import annotations
-from flask import Blueprint, render_template, request
+
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 import json
+
+from flask import Blueprint, render_template, request
 import pandas as pd
 import plotly.express as px
-from src.utils.get_data import query_db
 
-# Déclaration du Blueprint Flask
+# import local avec repli pour éviter E0401 lors de l'analyse statique
+try:
+    from src.utils.get_data import query_db  # type: ignore
+except ImportError:  # pragma: no cover
+    def query_db(*args, **kwargs):  # noqa: D401
+        """stub pour pylint en absence du module au linting."""
+        raise ImportError("src.utils.get_data introuvable")
+
+# déclaration du blueprint flask
 carte_bp = Blueprint("carte", __name__, url_prefix="/carte")
 
-# Chemin absolu vers le GeoJSON
+# chemin absolu vers le geojson
 ROOT = Path(__file__).resolve().parents[2]
 GEOJSON_DEPTS_PATH = ROOT / "departements-version-simplifiee.geojson"
 
 
-# --- Fonctions utilitaires (inchangées ou légèrement adaptées) ---
+# --- fonctions utilitaires ---
 @lru_cache(maxsize=1)
 def _load_departements_geojson() -> dict:
-    """Charge une seule fois le GeoJSON des départements."""
+    """charge une seule fois le geojson des départements."""
     with GEOJSON_DEPTS_PATH.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def _detect_featureidkey(geojson: dict) -> str:
-    """Détecte automatiquement la clé featureidkey la plus probable dans le GeoJSON."""
+    """détecte automatiquement la clé featureidkey probable dans le geojson."""
     features = geojson.get("features", [])
     if not features:
         return "properties.code"
@@ -42,7 +49,7 @@ def _detect_featureidkey(geojson: dict) -> str:
 
 
 def _ensure_dataframe_schema(df: pd.DataFrame) -> pd.DataFrame:
-    """Assure la présence des colonnes nécessaires et normalise le code département."""
+    """assure la présence des colonnes nécessaires et normalise le code département."""
     df = df.copy()
     if "dep" in df.columns and "dept" not in df.columns:
         df = df.rename(columns={"dep": "dept"})
@@ -50,25 +57,33 @@ def _ensure_dataframe_schema(df: pd.DataFrame) -> pd.DataFrame:
     required = {"dept", "accidents"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"Colonnes manquantes dans df: {missing}")
+        raise ValueError(f"colonnes manquantes dans df: {missing}")
 
-    df["dept"] = df["dept"].astype(str).str.strip().apply(lambda v: v.zfill(2) if v.isdigit() and len(v) < 2 else v)
+    # normalisation du code département, en conservant les non numériques (ex: 2A, 2B)
+    def _norm_dept(v: str) -> str:
+        v = str(v).strip()
+        if v.isdigit() and len(v) < 2:
+            return v.zfill(2)
+        return v
+
+    df["dept"] = df["dept"].astype(str).str.strip().apply(_norm_dept)
 
     if "population" in df.columns:
-        df["taux_100k"] = df.apply(
-            lambda r: (r["accidents"] / r["population"] * 100000.0) if r.get("population", 0) else None,
-            axis=1,
-        )
+        def _taux(row) -> float | None:
+            pop = row.get("population", 0)
+            return (row["accidents"] / pop * 100_000.0) if pop else None
+
+        df["taux_100k"] = df.apply(_taux, axis=1)
 
     return df
 
 
 def _build_figure(df: pd.DataFrame, metric: str):
-    """Construit la carte choroplèthe Plotly."""
+    """construit la carte choroplèthe plotly."""
     geojson = _load_departements_geojson()
     featureidkey = _detect_featureidkey(geojson)
     if metric not in df.columns:
-        raise ValueError(f"Colonne '{metric}' absente du dataframe.")
+        raise ValueError(f"colonne '{metric}' absente du dataframe.")
 
     fig = px.choropleth(
         df,
@@ -79,46 +94,61 @@ def _build_figure(df: pd.DataFrame, metric: str):
         projection="mercator",
         color_continuous_scale="Blues",
         hover_name="dept",
-        labels={"accidents": "Accidents", "taux_100k": "Taux pour 100 000 hab."},
+        labels={
+            "accidents": "Accidents",
+            "taux_100k": "Taux pour 100 000 hab.",
+        },
     )
 
     fig.update_geos(fitbounds="locations", visible=False)
     fig.update_layout(
-        margin=dict(l=10, r=10, t=40, b=10),
-        coloraxis_colorbar=dict(title="Valeur"),
+        margin={"l": 10, "r": 10, "t": 40, "b": 10},
+        coloraxis_colorbar={"title": "Valeur"},
         template="plotly_white",
-        title=dict(text="Accidentologie par département (France)", x=0.5),
+        title={"text": "Accidentologie par département (France)", "x": 0.5},
     )
 
     return fig
 
 
-# --- Route Flask principale ---
+# --- route flask principale ---
 @carte_bp.route("/", methods=["GET"])
 def show_carte():
-    """Affiche la page avec la carte choroplèthe."""
-    # Récupération des paramètres GET (ex: /carte?annee=2023&metrique=accidents)
+    """affiche la page avec la carte choroplèthe."""
+    # paramètres GET (ex: /carte?annee=2023&metrique=accidents)
     year = request.args.get("annee", default=2023, type=int)
     metric = request.args.get("metrique", default="accidents", type=str)
 
     try:
         sql = """
-        SELECT dep AS dept, COUNT(*) AS accidents
-        FROM caracteristiques
-        WHERE annee = :year OR (annee IS NULL AND :year IS NULL)
-        GROUP BY dep
+            SELECT dep AS dept, COUNT(*) AS accidents
+            FROM caracteristiques
+            WHERE annee = :year OR (annee IS NULL AND :year IS NULL)
+            GROUP BY dep
         """
         df = query_db(sql, {"year": year})
-    except Exception as e:
-        return render_template("carte.html", plot_html=None, error=f"Erreur SQL : {e}")
+    except (ValueError, ConnectionError, TimeoutError) as err:
+        return render_template(
+            "carte.html",
+            plot_html=None,
+            error=f"erreur sql : {err}",
+        )
 
     if df is None or df.empty:
-        return render_template("carte.html", plot_html=None, error="Aucune donnée disponible")
+        return render_template(
+            "carte.html",
+            plot_html=None,
+            error="aucune donnée disponible",
+        )
 
     try:
         df = _ensure_dataframe_schema(df)
-    except Exception as e:
-        return render_template("carte.html", plot_html=None, error=f"Données invalides : {e}")
+    except (ValueError, KeyError, TypeError) as err:
+        return render_template(
+            "carte.html",
+            plot_html=None,
+            error=f"données invalides : {err}",
+        )
 
     if metric == "taux_100k" and "taux_100k" not in df.columns:
         metric = "accidents"
@@ -126,4 +156,10 @@ def show_carte():
     fig = _build_figure(df, metric)
     plot_html = fig.to_html(full_html=False)
 
-    return render_template("carte.html", plot_html=plot_html, error=None, year=year, metric=metric)
+    return render_template(
+        "carte.html",
+        plot_html=plot_html,
+        error=None,
+        year=year,
+        metric=metric,
+    )
