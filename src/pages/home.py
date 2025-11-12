@@ -16,23 +16,35 @@ try:
 except Exception:
     from src.utils.get_data import query_db
 
-def _make_top_dept_figure(year: int = 2023):
-    """Top 10 départements"""
+def _make_accidents_map(year: int = 2023, limit: int = 1000):
+    """Carte des accidents localisés (scatter mapbox)"""
     try:
-        sql = """
-        SELECT dep AS dept, COUNT(*) AS accidents
+        sql = f"""
+        SELECT lat, lon
         FROM caracteristiques
         WHERE annee = :year
-        GROUP BY dep
-        ORDER BY accidents DESC
-        LIMIT 10
+          AND lat IS NOT NULL AND lon IS NOT NULL
+        LIMIT {limit}
         """
         df = query_db(sql, {"year": year})
         if df is None or df.empty:
-            return px.bar(title="Aucune donnée disponible")
-        return px.bar(df, x="dept", y="accidents", title=f"Top 10 départements ({year})")
+            return px.scatter_mapbox(title="Aucune donnée géolocalisée")
+        df = df.dropna(subset=["lat", "lon"])
+        fig = px.scatter_mapbox(
+            df,
+            lat="lat",
+            lon="lon",
+            zoom=5,
+            height=500,
+            title=f"Localisation des accidents ({len(df)} points, {year})",
+        )
+        fig.update_layout(
+            mapbox_style="open-street-map",
+            margin={"r":0,"t":40,"l":0,"b":0}
+        )
+        return fig
     except Exception as e:
-        return px.bar(title=f"Erreur: {e}")
+        return px.scatter_mapbox(title=f"Erreur: {e}")
 
 def _make_speed_histogram(year: int = 2023, bins: int = 30):
     """Histogramme vitesses"""
@@ -49,7 +61,7 @@ def _make_speed_histogram(year: int = 2023, bins: int = 30):
         if df.empty:
             return px.histogram(title="Pas de données")
         fig = px.histogram(df, x="speed", nbins=bins,
-                           title=f"Distribution des vitesses")
+                           title=f"Distribution des vitesses en 2023")
         fig.update_layout(bargap=0.05)
         return fig
     except Exception as e:
@@ -59,14 +71,14 @@ def _make_speed_histogram(year: int = 2023, bins: int = 30):
 layout = html.Div([
     html.H1("Dashboard — Accidents et Radars", style={"textAlign": "center", "marginBottom": "8px"}),
     html.P("Vue d'ensemble", style={"textAlign": "center"}),
-    
+
+    # Carte des accidents
+    html.Div([
+        dcc.Graph(id="home-accidents-map", figure=_make_accidents_map(2023, limit=1000)),
+    ], style={"maxWidth": "1100px", "margin": "24px auto", "padding": "12px"}),
+
     # Histogramme vitesses
     html.Div([
         dcc.Graph(id="home-speed-hist", figure=_make_speed_histogram(2023, bins=40)),
-    ], style={"maxWidth": "1100px", "margin": "24px auto", "padding": "12px"}),
-
-    # Top departments bar
-    html.Div([
-        dcc.Graph(id="home-top-dept", figure=_make_top_dept_figure(2023)),
     ], style={"maxWidth": "1100px", "margin": "24px auto", "padding": "12px"}),
 ], style={"padding": "8px"})
