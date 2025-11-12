@@ -1,69 +1,81 @@
-"""
-test vraiment test
-"""
+"""transformation des codes d'arrondissement vers codes insee commune."""
+
+from __future__ import annotations
+
+import warnings
 
 import pandas as pd
-import warnings
-warnings.filterwarnings('ignore')
 
-print("Chargement des données...")
+warnings.filterwarnings("ignore")
+
+print("chargement des données...")
 
 # chargement des deux csv
-# Le fichier `caract_clean.csv` utilise des virgules comme séparateur; on laisse pandas détecter
+# le fichier `caract_clean.csv` peut utiliser un séparateur détecté automatiquement
 try:
-    df_accidents = pd.read_csv('data/cleaned/caract_clean.csv', sep=None, engine='python')
-except Exception:
-    # fallback si détection échoue
-    df_accidents = pd.read_csv('data/cleaned/caract_clean.csv')
+    df_accidents = pd.read_csv(
+        "data/cleaned/caract_clean.csv",
+        sep=None,
+        engine="python",
+    )
+except (OSError, UnicodeDecodeError, pd.errors.ParserError):
+    # repli si la détection échoue
+    df_accidents = pd.read_csv("data/cleaned/caract_clean.csv")
 
-df_arrondissements = pd.read_csv('data/cleaned/communes_avec_arrondissements.csv', sep=';')
+df_arrondissements = pd.read_csv(
+    "data/cleaned/communes_avec_arrondissements.csv",
+    sep=";",
+)
 
-# Debug: afficher les colonnes trouvées (aide au diagnostic)
-print(f"Colonnes accidents: {list(df_accidents.columns)}")
+# debug: afficher les colonnes trouvées
+print(f"colonnes accidents: {list(df_accidents.columns)}")
 
-print(f"Accidents: {len(df_accidents)} lignes")
-print(f"Arrondissements: {len(df_arrondissements)} lignes")
+print(f"accidents: {len(df_accidents)} lignes")
+print(f"arrondissements: {len(df_arrondissements)} lignes")
 
-# Créer un dictionnaire de mapping: code_postal_arrondissement devient code_insee_commune
-mapping_dict = {}
-for idx, row in df_arrondissements.iterrows():
-    code_postal = str(row['code_postal_arrondissement'])
-    code_insee = str(row['code_insee_commune']).zfill(5)
+# créer un dictionnaire de mapping: code_postal_arrondissement -> code_insee_commune
+mapping_dict: dict[str, str] = {}
+for _, row in df_arrondissements.iterrows():
+    code_postal = str(row["code_postal_arrondissement"])
+    code_insee = str(row["code_insee_commune"]).zfill(5)
     mapping_dict[code_postal] = code_insee
 
-print(f"\n Dictionnaire de mapping créé avec {len(mapping_dict)} entrées")
-print(f"   Exemples:")
-for code in ['75101', '75116', '13201', '13055', '69301']:
+print(f"\ndictionnaire de mapping créé avec {len(mapping_dict)} entrées")
+print("   exemples:")
+for code in ["75101", "75116", "13201", "13055", "69301"]:
     if code in mapping_dict:
         print(f"   - {code} -> {mapping_dict[code]}")
 
-# Transformer la colonne 'com' dans le CSV accidents
-df_accidents['com_original'] = df_accidents['com'].astype(str)
-df_accidents['com'] = df_accidents['com'].astype(str).apply(
-    lambda x: mapping_dict.get(x, x)  # Si trouve dans mapping, remplace, sinon garde l'original
+# transformer la colonne 'com' dans le csv accidents
+df_accidents["com_original"] = df_accidents["com"].astype(str)
+df_accidents["com"] = df_accidents["com"].astype(str).apply(
+    lambda x: mapping_dict.get(x, x)
 )
 
-print(f"\n Transformation appliquée...")
+print("\ntransformation appliquée...")
 
-# Comparer avant/après
-changes = (df_accidents['com_original'] != df_accidents['com']).sum()
-print(f"   • Lignes modifiées: {changes}")
+# comparer avant/après
+changes = (df_accidents["com_original"] != df_accidents["com"]).sum()
+print(f"   - lignes modifiées: {changes}")
 
-# Afficher les communes modifiées
-modified = df_accidents[df_accidents['com_original'] != df_accidents['com']]
-if len(modified) > 0:
-    print(f"\n📍 Exemples de transformations:")
-    for orig, new in zip(modified['com_original'].unique()[:10], modified['com'].unique()[:10]):
+# afficher quelques exemples de transformations
+modified = df_accidents[df_accidents["com_original"] != df_accidents["com"]]
+if not modified.empty:
+    print("\nexemples de transformations:")
+    orig_uniques = modified["com_original"].unique()[:10]
+    new_uniques = modified["com"].unique()[:10]
+    for orig, new in zip(orig_uniques, new_uniques):
         print(f"   - {orig} -> {new}")
 
-# Sauvegarder le CSV transformé
-df_accidents_transformed = df_accidents.drop(columns=['com_original'])
-df_accidents_transformed.to_csv('caract-2023-TRANSFORMED.csv', sep=';', index=False)
+# sauvegarder le csv transformé
+df_accidents_transformed = df_accidents.drop(columns=["com_original"])
+df_accidents_transformed.to_csv("caract-2023-TRANSFORMED.csv", sep=";", index=False)
 
-print(f"\n CSV transformé sauvegardé: caract-2023-TRANSFORMED.csv")
+print("\ncsv transformé sauvegardé: caract-2023-TRANSFORMED.csv")
 
-# Statistiques
-print(f"\n Statistiques:")
-print(f"   • Total lignes: {len(df_accidents_transformed)}")
-print(f"   • Communes uniques: {df_accidents_transformed['com'].nunique()}")
-print(f"   • Avec coordonnées valides: {df_accidents_transformed.dropna(subset=['lat_acc', 'lon_acc']).shape[0]}")
+# statistiques
+with_coords = df_accidents_transformed.dropna(subset=["lat_acc", "lon_acc"]).shape[0]
+print("\nstatistiques:")
+print(f"   - total lignes: {len(df_accidents_transformed)}")
+print(f"   - communes uniques: {df_accidents_transformed['com'].nunique()}")
+print(f"   - avec coordonnées valides: {with_coords}")

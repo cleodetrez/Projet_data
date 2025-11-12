@@ -1,80 +1,123 @@
-import pandas as pd
+"""fusionne les csv nettoyés d'une année en un seul fichier."""
+
+from __future__ import annotations
+
 from pathlib import Path
 import logging
-from typing import Union, Optional
+from typing import Optional, Union
+
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def merge_cleaned_year(year: Union[str, int],
-                       cleaned_dir: Union[str, Path] = None,
-                       output_file: Optional[Union[str, Path]] = None,
-                       pattern: Optional[str] = None,
-                       primary_key: Optional[str] = None) -> Path:
+
+def merge_cleaned_year(
+    year: Union[str, int, None],
+    cleaned_dir: Union[str, Path, None] = None,
+    output_file: Optional[Union[str, Path]] = None,
+    pattern: Optional[str] = None,
+    primary_key: Optional[str] = None,
+) -> Path:
+    """regroupe tous les csv nettoyés d'une même année en un seul csv.
+
+    args:
+        year: '2023' ou 2023. si None, regroupe tous les csv du dossier.
+        cleaned_dir: dossier des fichiers nettoyés
+            (défaut: data/cleaned à la racine du projet).
+        output_file: chemin de sortie. si None -> cleaned_{year}.csv
+            ou cleaned_all.csv.
+        pattern: motif glob optionnel. par défaut '*{year}*.csv' (ou '*.csv').
+        primary_key: colonne utilisée pour dédoublonner
+            (ex: 'Num_Acc' ou 'accident_id').
+
+    returns:
+        Path: chemin du fichier csv combiné.
     """
-    Regroupe tous les CSV nettoyés d'une même année en un seul CSV.
-    - year: '2023' ou 2023 (si None, regroupe tous les CSV du dossier)
-    - cleaned_dir: dossier contenant les fichiers nettoyés (par défaut data/cleaned à la racine du projet)
-    - output_file: chemin de sortie (si None -> cleaned_{year}.csv ou cleaned_all.csv)
-    - pattern: glob pattern optionnel (par défaut '*{year}*.csv' ou '*.csv' si year est None)
-    - primary_key: colonne pour dédoublonner (ex: 'Num_Acc' ou 'accident_id')
-    Retourne le Path du fichier de sortie.
-    """
-    # par défaut, prendre data/cleaned à la racine du projet
+    # répertoire par défaut: <racine>/data/cleaned
     if cleaned_dir is None:
-        cleaned_dir = Path(__file__).parents[2] / 'data' / 'cleaned'
+        cleaned_dir = Path(__file__).parents[2] / "data" / "cleaned"
     cleaned_dir = Path(cleaned_dir).expanduser().resolve()
 
     if year is None:
-        default_pattern = '*.csv'
+        default_pattern = "*.csv"
     else:
-        default_pattern = pattern if pattern is not None else f'*{year}*.csv'
+        default_pattern = pattern if pattern is not None else f"*{year}*.csv"
 
     files = sorted(cleaned_dir.glob(default_pattern))
 
-    # fallback : si aucun fichier avec l'année trouvé, prendre tous les CSV et logger
+    # fallback : si aucun fichier ne correspond, prendre tous les csv et logguer
     if not files:
-        fallback = sorted(cleaned_dir.glob('*.csv'))
+        fallback = sorted(cleaned_dir.glob("*.csv"))
         if fallback:
-            logger.warning(f"Aucun fichier trouvé avec le pattern {default_pattern}. Utilisation de tous les CSV ({len(fallback)} fichiers) dans {cleaned_dir}.")
+            logger.warning(
+                "aucun fichier pour le pattern %s. utilisation de tous les csv "
+                "(%d fichiers) dans %s.",
+                default_pattern,
+                len(fallback),
+                cleaned_dir,
+            )
             files = fallback
         else:
-            raise FileNotFoundError(f"Aucun fichier CSV trouvé dans {cleaned_dir} (pattern recherché: {default_pattern})")
+            raise FileNotFoundError(
+                f"aucun fichier csv trouvé dans {cleaned_dir} "
+                f"(pattern recherché: {default_pattern})"
+            )
 
     dfs = []
-    for f in files:
+    for fpath in files:
         try:
-            # lecture prioritaire avec séparateur ';' (souvent le cas)
-            df = pd.read_csv(f, low_memory=False, sep=';')
-        except Exception:
-            # fallback lecture automatique
-            df = pd.read_csv(f, low_memory=False)
+            # lecture prioritaire avec séparateur ';' (fréquent)
+            df = pd.read_csv(fpath, low_memory=False, sep=";")
+        except (pd.errors.ParserError, UnicodeDecodeError, OSError):
+            # repli lecture auto
+            df = pd.read_csv(fpath, low_memory=False)
         dfs.append(df)
-        logger.info(f"lu {f.name} -> {len(df)} lignes, {len(df.columns)} colonnes")
+        logger.info(
+            "lu %s -> %d lignes, %d colonnes",
+            fpath.name,
+            len(df),
+            len(df.columns),
+        )
 
     combined = pd.concat(dfs, ignore_index=True, sort=False)
 
+    before = len(combined)
     if primary_key and primary_key in combined.columns:
-        before = len(combined)
         combined = combined.drop_duplicates(subset=[primary_key])
-        logger.info(f"suppression de {before - len(combined)} doublons sur la clé {primary_key}")
+        logger.info(
+            "suppression de %d doublons sur la clé %s",
+            before - len(combined),
+            primary_key,
+        )
     else:
-        before = len(combined)
         combined = combined.drop_duplicates()
-        logger.info(f"suppression de {before - len(combined)} doublons (général)")
+        logger.info(
+            "suppression de %d doublons (général)",
+            before - len(combined),
+        )
 
     if output_file is None:
-        name = f'cleaned_{year}' if year is not None else 'cleaned_all'
-        output_file = cleaned_dir / f'{name}.csv'
-    output_file = Path(output_file)
+        name = f"cleaned_{year}" if year is not None else "cleaned_all"
+        output_file = cleaned_dir / f"{name}.csv"
+    output_path = Path(output_file)
 
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    combined.to_csv(output_file, index=False)
-    logger.info(f"fichier combiné sauvegardé : {output_file} ({len(combined)} lignes)")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    combined.to_csv(output_path, index=False)
+    logger.info(
+        "fichier combiné sauvegardé : %s (%d lignes)",
+        output_path,
+        len(combined),
+    )
 
-    return output_file
+    return output_path
+
 
 if __name__ == "__main__":
     # exemple d'utilisation depuis la racine du projet
-    out = merge_cleaned_year(2023, cleaned_dir=Path(__file__).parents[2] / 'data' / 'cleaned', primary_key='Num_Acc')
-    print(f"Saved combined file: {out}")
+    OUT = merge_cleaned_year(
+        2023,
+        cleaned_dir=Path(__file__).parents[2] / "data" / "cleaned",
+        primary_key="Num_Acc",
+    )
+    print(f"saved combined file: {OUT}")

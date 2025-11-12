@@ -1,22 +1,41 @@
-"""
-"""
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[2]))
+"""routage des pages dash (layout global + callbacks)."""
+
+from __future__ import annotations
+
 from dash import html, dcc, Input, Output, callback
 
-from pages.navbar import navbar
-from src.pages.home import layout as home_layout
-from src.pages.about import layout as about_layout
+# navbar
+try:
+    from src.pages.navbar import navbar  # si l'appli est lancée en package
+except ImportError:
+    from pages.navbar import navbar  # repli en import relatif
 
+# pages : home
+try:
+    from src.pages.home import layout as home_layout
+except ImportError:
+    from pages.home import layout as home_layout
+
+# pages : about
+try:
+    from src.pages.about import layout as about_layout
+except ImportError:
+    from pages.about import layout as about_layout
+
+# pages : carte (avec repli si absente)
 try:
     from src.pages.carte import layout as map_layout
-except Exception:
-    def map_layout():
-        return html.Div("la page est indispo", style={"padding": "20px"})
+except ImportError:
+    try:
+        from pages.carte import layout as map_layout
+    except ImportError:
+        def map_layout():
+            """vue de repli si la page carte est indisponible."""
+            return html.Div("la page est indisponible", style={"padding": "20px"})
+
 
 def shell_layout():
-    """layout global: barre de nav + slot pour les pages + Location pour le routage."""
+    """layout global : barre de nav + zone de contenu + dcc.Location."""
     return html.Div(
         [
             dcc.Location(id="url", refresh=False),
@@ -25,11 +44,13 @@ def shell_layout():
         ]
     )
 
+
 @callback(
     Output("route-content", "children"),
     Input("url", "pathname"),
 )
 def router(pathname: str):
+    """retourne le layout correspondant au chemin demandé."""
     if pathname in ("/", "", None):
         return home_layout()
     if pathname == "/about":
@@ -39,8 +60,8 @@ def router(pathname: str):
     # 404
     return html.Div(
         [
-            html.H2("404 — Page introuvable"),
-            html.P(f"Chemin demandé : {pathname}"),
+            html.H2("404 — page introuvable"),
+            html.P(f"chemin demandé : {pathname}"),
         ],
         style={"maxWidth": "800px", "margin": "40px auto"},
     )

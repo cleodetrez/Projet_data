@@ -1,6 +1,10 @@
+"""Composant de barre de navigation pour l'application Dash"""
+
 from dash import html, dcc
 
+
 def navbar():
+    """Construit la barre de navigation principale"""
     return html.Nav(
         [
             html.Div(
