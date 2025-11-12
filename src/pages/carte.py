@@ -14,7 +14,9 @@ from src.utils.get_data import query_db
 # Déclaration du Blueprint Flask
 carte_bp = Blueprint("carte", __name__, url_prefix="/carte")
 
-GEOJSON_DEPTS_PATH = Path("data/communes.geojson")
+# Chemin absolu vers le GeoJSON
+ROOT = Path(__file__).resolve().parents[2]
+GEOJSON_DEPTS_PATH = ROOT / "departements-version-simplifiee.geojson"
 
 
 # --- Fonctions utilitaires (inchangées ou légèrement adaptées) ---

@@ -1,49 +1,67 @@
 from __future__ import annotations
-import dash
 from dash import html, dcc
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from pathlib import Path
 import sys
+import json
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-# Enregistrer la page
-dash.register_page(__name__, path="/")
+ROOT = Path(__file__).resolve().parents[2]
+GEOJSON_PATH = ROOT / "departements-version-simplifiee.geojson"
 
 try:
     from ..utils.get_data import query_db
 except Exception:
     from src.utils.get_data import query_db
 
-# Importe les fonctions nécessaires de carte.py
-from src.pages.carte import _build_figure, _ensure_dataframe_schema
 
-def _make_choropleth_map(year: int = 2023, metric: str = "accidents"):
-    """Carte choroplèthe par département (réutilise la logique de carte.py)"""
+def _make_communes_map():
+    """Affiche une carte simple des communes depuis le GeoJSON"""
     try:
-        sql = """
-        SELECT dep AS dept, COUNT(*) AS accidents
-        FROM caracteristiques
-        WHERE annee = :year OR (annee IS NULL AND :year IS NULL)
-        GROUP BY dep
-        """
-        df = query_db(sql, {"year": year})
+        # Charger le GeoJSON
+        with GEOJSON_PATH.open("r", encoding="utf-8") as f:
+            geojson = json.load(f)
+        
+        # Créer un dataframe vide avec une colonne pour la coloration
+        df = pd.DataFrame({
+            "location": ["France"],
+            "value": [1]
+        })
+        
+        # Créer la choroplèthe avec le GeoJSON
+        fig = px.choropleth(
+            df,
+            geojson=geojson,
+            locations="location",
+            color="value",
+            featureidkey="properties.nom",
+            projection="mercator",
+            title="Carte des communes en France",
+        )
+        
+        fig.update_geos(
+            center=dict(lon=2, lat=46),  # Centre sur la France
+            lataxis_range=[41, 51],
+            lonaxis_range=[-6, 8],
+        )
+        
+        fig.update_layout(
+            height=600,
+            margin=dict(l=0, r=0, t=40, b=0),
+            coloraxis_showscale=False,  # Masquer la barre de couleur
+        )
+        
+        return fig
+    
     except Exception as e:
-        return px.scatter(title=f"Aucune donnée: {e}")
-
-    if df is None or df.empty:
-        return px.scatter(title="Aucune donnée disponible")
-
-    try:
-        df = _ensure_dataframe_schema(df)
-    except Exception as e:
-        return px.scatter(title=f"Données invalides: {e}")
-
-    if metric == "taux_100k" and "taux_100k" not in df.columns:
-        metric = "accidents"
-
-    return _build_figure(df, metric)
+        print(f"Erreur carte communes : {e}")
+        # Afficher une carte vide avec message d'erreur
+        fig = go.Figure()
+        fig.add_annotation(text=f"Erreur : {e}", showarrow=False)
+        return fig
 
 def _make_speed_histogram(year: int = 2023, bins: int = 30):
     """Histogramme vitesses"""
@@ -71,9 +89,9 @@ layout = html.Div([
     html.H1("Dashboard — Accidents et Radars", style={"textAlign": "center", "marginBottom": "8px"}),
     html.P("Vue d'ensemble", style={"textAlign": "center"}),
 
-    # Carte choroplèthe par département (importée de carte.py)
+    # Carte des communes
     html.Div([
-        dcc.Graph(id="home-choropleth-map", figure=_make_choropleth_map(2023, metric="accidents")),
+        dcc.Graph(id="home-communes-map", figure=_make_communes_map()),
     ], style={"maxWidth": "1100px", "margin": "24px auto", "padding": "12px"}),
 
     # Histogramme vitesses
