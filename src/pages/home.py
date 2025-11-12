@@ -16,35 +16,34 @@ try:
 except Exception:
     from src.utils.get_data import query_db
 
-def _make_accidents_map(year: int = 2023, limit: int = 1000):
-    """Carte des accidents localisés (scatter mapbox)"""
+# Importe les fonctions nécessaires de carte.py
+from src.pages.carte import _build_figure, _ensure_dataframe_schema
+
+def _make_choropleth_map(year: int = 2023, metric: str = "accidents"):
+    """Carte choroplèthe par département (réutilise la logique de carte.py)"""
     try:
-        sql = f"""
-        SELECT lat, lon
+        sql = """
+        SELECT dep AS dept, COUNT(*) AS accidents
         FROM caracteristiques
-        WHERE annee = :year
-          AND lat IS NOT NULL AND lon IS NOT NULL
-        LIMIT {limit}
+        WHERE annee = :year OR (annee IS NULL AND :year IS NULL)
+        GROUP BY dep
         """
         df = query_db(sql, {"year": year})
-        if df is None or df.empty:
-            return px.scatter_mapbox(title="Aucune donnée géolocalisée")
-        df = df.dropna(subset=["lat", "lon"])
-        fig = px.scatter_mapbox(
-            df,
-            lat="lat",
-            lon="lon",
-            zoom=5,
-            height=500,
-            title=f"Localisation des accidents ({len(df)} points, {year})",
-        )
-        fig.update_layout(
-            mapbox_style="open-street-map",
-            margin={"r":0,"t":40,"l":0,"b":0}
-        )
-        return fig
     except Exception as e:
-        return px.scatter_mapbox(title=f"Erreur: {e}")
+        return px.scatter(title=f"Aucune donnée: {e}")
+
+    if df is None or df.empty:
+        return px.scatter(title="Aucune donnée disponible")
+
+    try:
+        df = _ensure_dataframe_schema(df)
+    except Exception as e:
+        return px.scatter(title=f"Données invalides: {e}")
+
+    if metric == "taux_100k" and "taux_100k" not in df.columns:
+        metric = "accidents"
+
+    return _build_figure(df, metric)
 
 def _make_speed_histogram(year: int = 2023, bins: int = 30):
     """Histogramme vitesses"""
@@ -72,9 +71,9 @@ layout = html.Div([
     html.H1("Dashboard — Accidents et Radars", style={"textAlign": "center", "marginBottom": "8px"}),
     html.P("Vue d'ensemble", style={"textAlign": "center"}),
 
-    # Carte des accidents
+    # Carte choroplèthe par département (importée de carte.py)
     html.Div([
-        dcc.Graph(id="home-accidents-map", figure=_make_accidents_map(2023, limit=1000)),
+        dcc.Graph(id="home-choropleth-map", figure=_make_choropleth_map(2023, metric="accidents")),
     ], style={"maxWidth": "1100px", "margin": "24px auto", "padding": "12px"}),
 
     # Histogramme vitesses

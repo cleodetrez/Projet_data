@@ -1,72 +1,56 @@
 """
-carte clorophete par dep
+Carte choroplèthe par département (version Flask)
 """
 from __future__ import annotations
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[2]))
-
+from flask import Blueprint, render_template, request
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
-
 import json
 import pandas as pd
 import plotly.express as px
-from dash import html, dcc, Input, Output, callback
-
 from src.utils.get_data import query_db
+
+# Déclaration du Blueprint Flask
+carte_bp = Blueprint("carte", __name__, url_prefix="/carte")
 
 GEOJSON_DEPTS_PATH = Path("data/communes.geojson")
 
-#from src.utils.db_queries import get_accidents_by_departement
 
-
+# --- Fonctions utilitaires (inchangées ou légèrement adaptées) ---
 @lru_cache(maxsize=1)
 def _load_departements_geojson() -> dict:
     """Charge une seule fois le GeoJSON des départements."""
     with GEOJSON_DEPTS_PATH.open("r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def _detect_featureidkey(geojson: dict) -> str:
     """Détecte automatiquement la clé featureidkey la plus probable dans le GeoJSON."""
-    # cherche parmi les propriétés du premier feature
     features = geojson.get("features", [])
     if not features:
         return "properties.code"
     props = features[0].get("properties", {})
     candidates = list(props.keys())
-    # priorités simples
     for k in ("code", "insee", "dep", "CODE_DEPT", "code_dept", "dept"):
         for pk in candidates:
             if k.lower() in pk.lower():
                 return f"properties.{pk}"
-    # fallback au premier champ probable
-    if candidates:
-        return f"properties.{candidates[0]}"
-    return "properties.code"
+    return f"properties.{candidates[0]}" if candidates else "properties.code"
+
 
 def _ensure_dataframe_schema(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Assure la présence des colonnes nécessaires et normalise le code département.
-    Exige au minimum : 'dept' et 'accidents'
-    """
+    """Assure la présence des colonnes nécessaires et normalise le code département."""
     df = df.copy()
-    # accepter 'dep' ou 'dept'
     if "dep" in df.columns and "dept" not in df.columns:
         df = df.rename(columns={"dep": "dept"})
+
     required = {"dept", "accidents"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Colonnes manquantes dans df: {missing}")
 
-    # dept en string, padding à 2 caractères si numérique
-    df["dept"] = df["dept"].astype(str).str.strip()
-    def pad_dep(v):
-        if v.isdigit() and len(v) < 2:
-            return v.zfill(2)
-        return v
-    df["dept"] = df["dept"].apply(pad_dep)
+    df["dept"] = df["dept"].astype(str).str.strip().apply(lambda v: v.zfill(2) if v.isdigit() and len(v) < 2 else v)
 
     if "population" in df.columns:
         df["taux_100k"] = df.apply(
@@ -77,14 +61,10 @@ def _ensure_dataframe_schema(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _build_figure(df: pd.DataFrame, metric: str) -> "plotly.graph_objects.Figure":
-    """
-    Construit la carte choroplèthe.
-    metric ∈ {'accidents', 'taux_100k'}
-    """
+def _build_figure(df: pd.DataFrame, metric: str):
+    """Construit la carte choroplèthe Plotly."""
     geojson = _load_departements_geojson()
     featureidkey = _detect_featureidkey(geojson)
-
     if metric not in df.columns:
         raise ValueError(f"Colonne '{metric}' absente du dataframe.")
 
@@ -97,10 +77,7 @@ def _build_figure(df: pd.DataFrame, metric: str) -> "plotly.graph_objects.Figure
         projection="mercator",
         color_continuous_scale="Blues",
         hover_name="dept",
-        labels={
-            "accidents": "Accidents",
-            "taux_100k": "Taux pour 100 000 hab.",
-        },
+        labels={"accidents": "Accidents", "taux_100k": "Taux pour 100 000 hab."},
     )
 
     fig.update_geos(fitbounds="locations", visible=False)
@@ -114,53 +91,14 @@ def _build_figure(df: pd.DataFrame, metric: str) -> "plotly.graph_objects.Figure
     return fig
 
 
-def layout():
-    """Layout de la page choroplèthe (contrôles + graphique)"""
-    return html.Div(
-        [
-            html.H2("Carte choroplèthe — accidents par département"),
-            html.Div(
-                [
-                    # plsrs annees ?
-                    html.Label("Année"),
-                    dcc.Dropdown(
-                        id="map-year",
-                        options=[{"label": "2023", "value": 2023}],
-                        value=2023,
-                        clearable=False,
-                        style={"width": "200px"},
-                    ),
-                    html.Label("Métrique"),
-                    dcc.RadioItems(
-                        id="map-metric",
-                        options=[
-                            {"label": "Nombre d'accidents", "value": "accidents"},
-                            {"label": "Taux pour 100 000 hab.", "value": "taux_100k"},
-                        ],
-                        value="accidents",
-                        inline=True,
-                    ),
-                ],
-                style={"display": "flex", "gap": "24px", "alignItems": "center", "marginBottom": "12px"},
-            ),
-            dcc.Graph(id="map-choropleth", figure=px.scatter()),  # placeholder
-        ],
-        style={"maxWidth": "1100px", "margin": "0 auto", "padding": "12px"},
-    )
+# --- Route Flask principale ---
+@carte_bp.route("/", methods=["GET"])
+def show_carte():
+    """Affiche la page avec la carte choroplèthe."""
+    # Récupération des paramètres GET (ex: /carte?annee=2023&metrique=accidents)
+    year = request.args.get("annee", default=2023, type=int)
+    metric = request.args.get("metrique", default="accidents", type=str)
 
-
-@callback(
-    Output("map-choropleth", "figure"),
-    Input("map-year", "value"),
-    Input("map-metric", "value"),
-)
-
-def update_map(year: Optional[int], metric: str):
-    """
-    Callback Dash : récupère les données (dep / accidents) depuis la base et reconstruit la carte.
-    """
-    # requête simple : nombre d'accidents par département pour l'année demandée
-    # adapter le nom de la table/colonne si nécessaire (ici : caracteristiques avec colonne 'dep' ou 'dept')
     try:
         sql = """
         SELECT dep AS dept, COUNT(*) AS accidents
@@ -170,18 +108,20 @@ def update_map(year: Optional[int], metric: str):
         """
         df = query_db(sql, {"year": year})
     except Exception as e:
-        # si la requête échoue, renvoyer une figure d'erreur non bloquante
-        return px.scatter(title=f"Aucune donnée: {e}")
+        return render_template("carte.html", plot_html=None, error=f"Erreur SQL : {e}")
 
     if df is None or df.empty:
-        return px.scatter(title="Aucune donnée disponible")
+        return render_template("carte.html", plot_html=None, error="Aucune donnée disponible")
 
     try:
         df = _ensure_dataframe_schema(df)
     except Exception as e:
-        return px.scatter(title=f"Données invalides: {e}")
+        return render_template("carte.html", plot_html=None, error=f"Données invalides : {e}")
 
     if metric == "taux_100k" and "taux_100k" not in df.columns:
         metric = "accidents"
 
-    return _build_figure(df, metric)
+    fig = _build_figure(df, metric)
+    plot_html = fig.to_html(full_html=False)
+
+    return render_template("carte.html", plot_html=plot_html, error=None, year=year, metric=metric)

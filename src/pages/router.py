@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from dash import html, dcc, Input, Output, callback
 
-from src.pages.barrenavigation import navbar
+from pages.navbar import navbar
 from src.pages.home import layout as home_layout
 from src.pages.about import layout as about_layout
 

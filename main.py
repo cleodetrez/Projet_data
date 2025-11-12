@@ -1,82 +1,105 @@
 """
-main.py : Point d'entrée principal de l'application (version Flask + Plotly).
+main.py : Point d'entrée principal de l'application (Flask + Plotly)
+Appelle le Blueprint de la carte et affiche un histogramme en page d'accueil.
 """
 import sys
 from pathlib import Path
-
-# Ajouter la racine du projet au PYTHONPATH
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
 from flask import Flask, render_template_string
 import plotly.express as px
 import pandas as pd
 
-# Charger les données une seule fois (tu peux garder cette logique)
+# Ajouter la racine du projet au PYTHONPATH
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# Importer la fonction d’accès aux données
 try:
     from src.utils.get_data import query_db
 except Exception as e:
     print(f"⚠ Erreur import query_db: {e}")
 
-app = Flask(__name__)
+# Importer le blueprint de la carte
+from src.pages.carte import carte_bp
 
+# Créer l’app Flask
+app = Flask(__name__)
+app.register_blueprint(carte_bp)  # 🔹 <-- Enregistrement du blueprint /carte
+
+# --- Page d’accueil avec l’histogramme ---
 @app.route("/")
 def home():
-    # Exemple : graphique barres top départements
-    try:
-        sql = """
-        SELECT dep AS dept, COUNT(*) AS accidents
-        FROM caracteristiques
-        WHERE annee = :year
-        GROUP BY dep
-        ORDER BY accidents DESC
-        LIMIT 10
-        """
-        df = query_db(sql, {"year": 2023})
-        if df is None or df.empty:
-            fig1 = px.bar(title="Aucune donnée disponible")
-        else:
-            fig1 = px.bar(df, x="dept", y="accidents", title="Top 10 départements (2023)")
-    except Exception as e:
-        fig1 = px.bar(title=f"Erreur: {e}")
-
-    graph1 = fig1.to_html(full_html=False)
-
-    # Exemple : histogramme des vitesses
+    """Page d’accueil : affiche uniquement l’histogramme."""
     try:
         sql = """
         SELECT mesure AS speed FROM radars
         WHERE mesure IS NOT NULL LIMIT 5000
         """
-        df2 = query_db(sql)
-        if df2 is None or df2.empty:
-            fig2 = px.histogram(title="Aucune donnée")
+        df = query_db(sql)
+
+        if df is None or df.empty:
+            fig = px.histogram(title="Aucune donnée disponible")
         else:
-            df2["speed"] = pd.to_numeric(df2["speed"], errors="coerce")
-            df2 = df2.dropna(subset=["speed"])
-            fig2 = px.histogram(df2, x="speed", nbins=40, title="Distribution des vitesses")
+            df["speed"] = pd.to_numeric(df["speed"], errors="coerce")
+            df = df.dropna(subset=["speed"])
+            fig = px.histogram(df, x="speed", nbins=40, title="Distribution des vitesses (radars)")
+            fig.update_layout(template="plotly_white", bargap=0.1)
+
     except Exception as e:
-        fig2 = px.histogram(title=f"Erreur: {e}")
+        fig = px.histogram(title=f"Erreur : {e}")
 
-    graph2 = fig2.to_html(full_html=False)
+    graph_html = fig.to_html(full_html=False)
 
-    # Affichage dans une page HTML simple
     return render_template_string("""
-    <html>
+    <!DOCTYPE html>
+    <html lang="fr">
     <head>
-        <title>Dashboard Accidents et Radars (Flask)</title>
+        <meta charset="UTF-8">
+        <title>Dashboard Radars </title>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #fafafa;
+                margin: 0;
+                padding: 0;
+            }
+            h1 {
+                text-align: center;
+                color: #333;
+                padding-top: 20px;
+            }
+            .graph-container {
+                max-width: 1100px;
+                margin: 24px auto;
+                padding: 16px;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            a {
+                display: block;
+                text-align: center;
+                margin-top: 20px;
+                font-size: 18px;
+                color: #007bff;
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
+        </style>
     </head>
     <body>
-        <h1>Dashboard Accidents et Radars (Flask)</h1>
-        <div style="max-width:1100px; margin:24px auto; padding:12px;">
-            {{ graph1|safe }}
+        <h1>Dashboard Radars (Flask)</h1>
+        <div class="graph-container">
+            <h2>Histogramme — Vitesses mesurées</h2>
+            {{ graph_html|safe }}
         </div>
-        <div style="max-width:1100px; margin:24px auto; padding:12px;">
-            {{ graph2|safe }}
-        </div>
+        <a href="/carte">➡ Voir la carte choroplèthe</a>
     </body>
     </html>
-    """, graph1=graph1, graph2=graph2)
+    """, graph_html=graph_html)
 
-if __name__ == '__main__':
-    print("Lancement du dashboard sur http://127.0.0.1:5000/")
+
+if __name__ == "__main__":
+    print("Application Flask lancée sur http://127.0.0.1:5000/")
     app.run(debug=True)
