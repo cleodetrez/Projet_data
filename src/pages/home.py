@@ -294,10 +294,18 @@ def _make_speed_histogram(year=2023):
         return fig
 
 
-def _make_accidents_by_hour():
-    """Graphique accidents par heure"""
+def _make_accidents_by_day_line():
+    """Courbe — Évolution du nombre d'accidents par heure"""
     try:
-        sql = "SELECT heure FROM caracteristiques WHERE heure IS NOT NULL"
+        sql = """
+            SELECT 
+                CAST(SUBSTR(heure, 1, 2) AS INTEGER) AS heure_num,
+                COUNT(*) AS accidents 
+            FROM caracteristiques 
+            WHERE heure IS NOT NULL 
+            GROUP BY heure_num 
+            ORDER BY heure_num
+        """
         df = query_db(sql)
         
         if df is None or df.empty:
@@ -305,26 +313,125 @@ def _make_accidents_by_hour():
             fig.add_annotation(text="Aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
             return fig
         
-        df["heure"] = pd.to_numeric(df["heure"], errors="coerce")
-        df = df.dropna(subset=["heure"])
+        df = df.sort_values(by="heure_num")
         
         if df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="Pas de données", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            fig.add_annotation(text="Pas de données valides", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
             return fig
         
-        fig = px.histogram(
-            df,
-            x="heure",
-            nbins=24,
-            title="Accidents par heure du jour (2023)",
-            labels={"heure": "Heure (0-23)"}
+        fig = go.Figure()
+        
+        # Ajouter la ligne avec lissage
+        fig.add_trace(go.Scatter(
+            x=df["heure_num"],
+            y=df["accidents"],
+            mode="lines+markers",
+            name="Accidents",
+            line=dict(color="#6b5bd3", width=4, shape="spline"),
+            marker=dict(size=12, color="#6b5bd3", symbol="circle", line=dict(color="white", width=2)),
+            fill="tozeroy",
+            fillcolor="rgba(107, 91, 211, 0.15)",
+            hovertemplate="<b>Heure %{x:.0f}h</b><br>Accidents: <b>%{y}</b><extra></extra>",
+        ))
+        
+        fig.update_layout(
+            title={
+                "text": "Évolution du nombre d'accidents par heure",
+                "x": 0.5,
+                "xanchor": "center",
+                "font": {"size": 18, "color": "#2c3e50", "family": "Arial, sans-serif"}
+            },
+            xaxis_title="Heure (0-23)",
+            yaxis_title="Nombre d'accidents",
+            height=550,
+            margin=dict(l=80, r=60, t=100, b=80),
+            template="plotly_white",
+            hovermode="x unified",
+            plot_bgcolor="rgba(240, 248, 255, 0.3)",
+            paper_bgcolor="white",
+            font=dict(family="Arial, sans-serif", size=12, color="#2c3e50"),
+            showlegend=False,
         )
-        fig.update_layout(bargap=0.05, height=500)
+        
+        fig.update_xaxes(
+            tickmode="linear",
+            dtick=1,
+            range=[-0.5, 23.5],
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="rgba(200, 200, 200, 0.2)",
+            showline=True,
+            linewidth=2,
+            linecolor="#ddd",
+        )
+        
+        fig.update_yaxes(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="rgba(200, 200, 200, 0.2)",
+            showline=True,
+            linewidth=2,
+            linecolor="#ddd",
+        )
+        
         return fig
     
     except Exception as e:
-        print(f"Erreur graphique : {e}")
+        print(f"Erreur courbe accidents/heure : {e}")
+        fig = go.Figure()
+        fig.add_annotation(text=f"Erreur: {str(e)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        return fig
+
+
+def _make_accidents_pie_chart():
+    """Camembert — Distribution des accidents par type d'agglomération"""
+    try:
+        sql = "SELECT agg, COUNT(*) AS count FROM caracteristiques WHERE agg IS NOT NULL GROUP BY agg"
+        df = query_db(sql)
+        
+        if df is None or df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="Aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            return fig
+        
+        # Mapping des codes agglomération
+        agg_labels = {
+            1: "Agglomération",
+            2: "Hors agglomération",
+        }
+        df["agg_label"] = df["agg"].map(agg_labels)
+        df = df.sort_values(by="count", ascending=False)
+        
+        fig = go.Figure(data=[go.Pie(
+            labels=df["agg_label"],
+            values=df["count"],
+            marker=dict(colors=["#6b5bd3", "#f093fb"], line=dict(color="white", width=2)),
+            textposition="auto",
+            hovertemplate="<b>%{label}</b><br>Accidents: %{value}<br>Part: %{percent}<extra></extra>",
+            textinfo="label+percent",
+            textfont=dict(size=14, color="white", family="Arial, sans-serif"),
+        )])
+        
+        fig.update_layout(
+            title={
+                "text": "Distribution des accidents par agglomération",
+                "x": 0.5,
+                "xanchor": "center",
+                "font": {"size": 16, "color": "#2c3e50", "family": "Arial, sans-serif"}
+            },
+            height=420,
+            margin=dict(l=20, r=20, t=80, b=20),
+            font=dict(family="Arial, sans-serif", size=12),
+            paper_bgcolor="white",
+            showlegend=True,
+            legend=dict(x=0.7, y=0.5, bgcolor="rgba(255,255,255,0.8)", bordercolor="#ddd", borderwidth=1),
+        )
+        
+        return fig
+    
+    except Exception as e:
+        print(f"Erreur camembert accidents : {e}")
         fig = go.Figure()
         fig.add_annotation(text=f"Erreur: {str(e)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
         return fig
@@ -574,17 +681,96 @@ def create_choropleth_page(carte_mode="dept"):
 choropleth_page = create_choropleth_page("dept")
 
 graph_page = html.Div([
-    html.H2("⏰ Accidents par heure de la journée"),
+    html.H2("📈 Analyses Temporelles — Évolution des Accidents"),
+    
+    # Ligne 1 : Line chart (fullwidth)
     html.Div([
-        dcc.Graph(figure=_make_accidents_by_hour(), config={"responsive": True, "displayModeBar": True}),
+        html.Div([
+            html.H3("Courbe 1 — Accidents par heure", style={
+                "fontSize": "16px",
+                "fontWeight": "600",
+                "color": "#2c3e50",
+                "marginBottom": "16px",
+                "borderLeft": "4px solid #6b5bd3",
+                "paddingLeft": "12px",
+            }),
+            dcc.Graph(figure=_make_accidents_by_day_line(), config={"responsive": True, "displayModeBar": True}),
+        ], style={
+            "backgroundColor": "white",
+            "padding": "28px",
+            "borderRadius": "12px",
+            "boxShadow": "0 4px 20px rgba(0,0,0,0.08)",
+            "borderTop": "4px solid #6b5bd3",
+            "width": "100%",
+        }),
     ], style={
-        "backgroundColor": "white",
-        "padding": "28px",
-        "borderRadius": "12px",
-        "boxShadow": "0 4px 20px rgba(0,0,0,0.08)",
-        "boxShadow": "0 4px 20px rgba(102, 126, 234, 0.12)",
-        "borderTop": "4px solid #667eea",
-    })
+        "marginBottom": "28px",
+    }),
+    
+    # Ligne 2 : Camembert (50%) + Placeholder (50%)
+    html.Div([
+        # Camembert (gauche)
+        html.Div([
+            html.H3("Courbe 2 — Distribution par agglomération", style={
+                "fontSize": "16px",
+                "fontWeight": "600",
+                "color": "#2c3e50",
+                "marginBottom": "16px",
+                "borderLeft": "4px solid #f093fb",
+                "paddingLeft": "12px",
+            }),
+            dcc.Graph(figure=_make_accidents_pie_chart(), config={"responsive": True, "displayModeBar": True}),
+        ], style={
+            "backgroundColor": "white",
+            "padding": "28px",
+            "borderRadius": "12px",
+            "boxShadow": "0 4px 20px rgba(0,0,0,0.08)",
+            "borderTop": "4px solid #f093fb",
+            "flex": "1",
+            "minWidth": "45%",
+        }),
+        
+        # Placeholder (droite)
+        html.Div([
+            html.H3("Courbe 3 — À venir", style={
+                "fontSize": "16px",
+                "fontWeight": "600",
+                "color": "#999",
+                "marginBottom": "16px",
+                "borderLeft": "4px solid #bdc3c7",
+                "paddingLeft": "12px",
+            }),
+            html.Div(
+                "Nouvelle courbe à implémenter...",
+                style={
+                    "height": "420px",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "color": "#bbb",
+                    "fontSize": "16px",
+                    "fontStyle": "italic",
+                }
+            ),
+        ], style={
+            "backgroundColor": "#f9f9fb",
+            "padding": "28px",
+            "borderRadius": "12px",
+            "boxShadow": "0 2px 10px rgba(0,0,0,0.04)",
+            "borderTop": "4px solid #bdc3c7",
+            "border": "2px dashed #e8e8f0",
+            "flex": "1",
+            "minWidth": "45%",
+        }),
+    ], style={
+        "display": "flex",
+        "gap": "24px",
+        "flexWrap": "wrap",
+        "width": "100%",
+    }),
+    
+    # Espace pour courbes supplémentaires
+    html.Div(style={"marginTop": "40px"}),
 ])
 
 authors_page = html.Div([
