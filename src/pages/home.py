@@ -683,6 +683,134 @@ choropleth_page = create_choropleth_page("dept")
 graph_page = html.Div([
     html.H2("📈 Analyses Temporelles — Évolution des Accidents"),
     
+    # Section Filtres
+    html.Div([
+        html.H3("🔍 Filtres", style={
+            "fontSize": "16px",
+            "fontWeight": "700",
+            "color": "#2c3e50",
+            "marginBottom": "16px",
+            "borderBottom": "2px solid #6b5bd3",
+            "paddingBottom": "12px",
+        }),
+        
+        html.Div([
+            # Filtre 1 : Sexe
+            html.Div([
+                html.Label("Sexe", style={"fontWeight": "600", "fontSize": "13px", "color": "#2c3e50", "marginBottom": "6px"}),
+                dcc.Dropdown(
+                    id="filter-sexe",
+                    options=[
+                        {"label": "Tous", "value": "all"},
+                        {"label": "Homme", "value": "H"},
+                        {"label": "Femme", "value": "F"},
+                    ],
+                    value="all",
+                    style={"width": "100%"},
+                    clearable=False,
+                ),
+            ], style={"flex": "1", "minWidth": "150px", "marginRight": "16px"}),
+            
+            # Filtre 2 : Année
+            html.Div([
+                html.Label("Année", style={"fontWeight": "600", "fontSize": "13px", "color": "#2c3e50", "marginBottom": "6px"}),
+                dcc.Dropdown(
+                    id="filter-annee",
+                    options=[
+                        {"label": "Toutes", "value": "all"},
+                        {"label": "2023", "value": 2023},
+                    ],
+                    value="all",
+                    style={"width": "100%"},
+                    clearable=False,
+                ),
+            ], style={"flex": "1", "minWidth": "150px", "marginRight": "16px"}),
+            
+            # Filtre 3 : Luminosité
+            html.Div([
+                html.Label("Luminosité", style={"fontWeight": "600", "fontSize": "13px", "color": "#2c3e50", "marginBottom": "6px"}),
+                dcc.Dropdown(
+                    id="filter-luminosite",
+                    options=[
+                        {"label": "Toutes", "value": "all"},
+                        {"label": "Jour", "value": 1},
+                        {"label": "Crépuscule/Aube", "value": 2},
+                        {"label": "Nuit", "value": 3},
+                        {"label": "Nuit sans éclairage", "value": 4},
+                        {"label": "Nuit avec éclairage", "value": 5},
+                    ],
+                    value="all",
+                    style={"width": "100%"},
+                    clearable=False,
+                ),
+            ], style={"flex": "1", "minWidth": "150px", "marginRight": "16px"}),
+            
+            # Filtre 4 : Agglomération
+            html.Div([
+                html.Label("Agglomération", style={"fontWeight": "600", "fontSize": "13px", "color": "#2c3e50", "marginBottom": "6px"}),
+                dcc.Dropdown(
+                    id="filter-agglomeration",
+                    options=[
+                        {"label": "Tous", "value": "all"},
+                        {"label": "Agglomération", "value": 1},
+                        {"label": "Hors agglomération", "value": 2},
+                    ],
+                    value="all",
+                    style={"width": "100%"},
+                    clearable=False,
+                ),
+            ], style={"flex": "1", "minWidth": "150px", "marginRight": "16px"}),
+            
+            # Filtre 5 : Département (placeholder)
+            html.Div([
+                html.Label("Département", style={"fontWeight": "600", "fontSize": "13px", "color": "#2c3e50", "marginBottom": "6px"}),
+                dcc.Dropdown(
+                    id="filter-departement",
+                    options=[
+                        {"label": "Tous", "value": "all"},
+                    ],
+                    value="all",
+                    style={"width": "100%"},
+                    clearable=False,
+                    disabled=True,
+                ),
+            ], style={"flex": "1", "minWidth": "150px"}),
+        ], style={
+            "display": "flex",
+            "gap": "16px",
+            "flexWrap": "wrap",
+            "alignItems": "flex-start",
+        }),
+        
+        # Bouton réinitialiser
+        html.Div([
+            html.Button(
+                "🔄 Réinitialiser filtres",
+                id="btn-reset-filters",
+                n_clicks=0,
+                style={
+                    "marginTop": "12px",
+                    "padding": "8px 16px",
+                    "backgroundColor": "#ecf0f1",
+                    "border": "1px solid #bdc3c7",
+                    "borderRadius": "4px",
+                    "cursor": "pointer",
+                    "fontSize": "13px",
+                    "color": "#7f8c8d",
+                    "transition": "all 0.2s",
+                }
+            ),
+        ], style={"marginTop": "12px"}),
+        
+    ], style={
+        "backgroundColor": "#f9f9fb",
+        "padding": "20px",
+        "borderRadius": "12px",
+        "boxShadow": "0 2px 10px rgba(0,0,0,0.04)",
+        "border": "1px solid #ecf0f1",
+        "marginBottom": "28px",
+    }),
+    
     # Ligne 1 : Line chart (fullwidth)
     html.Div([
         html.Div([
