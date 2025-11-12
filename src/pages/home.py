@@ -12,6 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 ROOT = Path(__file__).resolve().parents[2]
 GEOJSON_PATH = ROOT / "departements-version-simplifiee.geojson"
+COMMUNES_GEOJSON_PATH = ROOT / "communes.geojson"
 
 try:
     from ..utils.get_data import query_db
@@ -63,6 +64,64 @@ def _make_departments_choropleth():
     
     except Exception as e:
         print(f"Erreur carte : {e}")
+        fig = go.Figure()
+        fig.add_annotation(text=f"Erreur : {str(e)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        return fig
+
+
+def _make_communes_choropleth():
+    """Carte choroplèthe par commune"""
+    try:
+        # Charger le GeoJSON communes
+        if not COMMUNES_GEOJSON_PATH.exists():
+            fig = go.Figure()
+            fig.add_annotation(text="Fichier communes.geojson non trouvé", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            return fig
+        
+        with COMMUNES_GEOJSON_PATH.open("r", encoding="utf-8") as f:
+            geojson = json.load(f)
+        
+        # Charger les données d'accidents par commune
+        sql = """
+            SELECT com AS code_commune, COUNT(*) AS accidents 
+            FROM caracteristiques 
+            WHERE com IS NOT NULL 
+            GROUP BY com
+        """
+        df = query_db(sql)
+        
+        if df is None or df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="Aucune donnée de communes disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            return fig
+        
+        # Normaliser les codes communes (5 chiffres)
+        df["code_commune"] = df["code_commune"].astype(str).str.zfill(5)
+        
+        # Créer la choroplèthe
+        fig = px.choropleth(
+            df,
+            geojson=geojson,
+            locations="code_commune",
+            color="accidents",
+            featureidkey="properties.code",
+            projection="mercator",
+            color_continuous_scale="Reds",
+            title="Accidentologie par commune (France)",
+            hover_name="code_commune",
+        )
+        
+        fig.update_geos(fitbounds="locations", visible=False)
+        fig.update_layout(
+            height=600,
+            margin=dict(l=0, r=0, t=40, b=0),
+            template="plotly_white",
+        )
+        
+        return fig
+    
+    except Exception as e:
+        print(f"Erreur carte communes : {e}")
         fig = go.Figure()
         fig.add_annotation(text=f"Erreur : {str(e)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
         return fig
@@ -170,17 +229,86 @@ histogram_page = html.Div([
     })
 ])
 
-choropleth_page = html.Div([
-    html.H2("Carte choroplèthe des accidents", style={"color": "#2c3e50", "borderBottom": "3px solid #3498db", "paddingBottom": "10px"}),
-    html.Div([
-        dcc.Graph(figure=_make_departments_choropleth()),
-    ], style={
-        "backgroundColor": "white",
-        "padding": "24px",
-        "borderRadius": "8px",
-        "boxShadow": "0 2px 8px rgba(0,0,0,0.1)",
-    })
-])
+def create_choropleth_page(carte_mode="dept"):
+    """Crée la page choroplèthe dynamiquement"""
+    if carte_mode == "commune":
+        fig = _make_communes_choropleth()
+        dept_style = {
+            "padding": "10px 20px",
+            "margin": "10px 5px",
+            "fontSize": "14px",
+            "fontWeight": "bold",
+            "cursor": "pointer",
+            "border": "2px solid #95a5a6",
+            "borderRadius": "4px",
+            "backgroundColor": "#ecf0f1",
+            "color": "#2c3e50",
+        }
+        commune_style = {
+            "padding": "10px 20px",
+            "margin": "10px 5px",
+            "fontSize": "14px",
+            "fontWeight": "bold",
+            "cursor": "pointer",
+            "border": "2px solid #3498db",
+            "borderRadius": "4px",
+            "backgroundColor": "#3498db",
+            "color": "white",
+        }
+    else:
+        fig = _make_departments_choropleth()
+        dept_style = {
+            "padding": "10px 20px",
+            "margin": "10px 5px",
+            "fontSize": "14px",
+            "fontWeight": "bold",
+            "cursor": "pointer",
+            "border": "2px solid #3498db",
+            "borderRadius": "4px",
+            "backgroundColor": "#3498db",
+            "color": "white",
+        }
+        commune_style = {
+            "padding": "10px 20px",
+            "margin": "10px 5px",
+            "fontSize": "14px",
+            "fontWeight": "bold",
+            "cursor": "pointer",
+            "border": "2px solid #95a5a6",
+            "borderRadius": "4px",
+            "backgroundColor": "#ecf0f1",
+            "color": "#2c3e50",
+        }
+    
+    return html.Div([
+        html.H2("Carte choroplèthe des accidents", style={"color": "#2c3e50", "borderBottom": "3px solid #3498db", "paddingBottom": "10px"}),
+        # Boutons de sélection
+        html.Div([
+            html.Button(
+                "Vue par Département",
+                id="btn-carte-dept",
+                n_clicks=0,
+                style=dept_style
+            ),
+            html.Button(
+                "Vue par Commune",
+                id="btn-carte-commune",
+                n_clicks=0,
+                style=commune_style
+            ),
+        ], style={"textAlign": "center", "marginBottom": "20px"}),
+        # Carte affichée
+        html.Div([
+            dcc.Graph(figure=fig),
+        ], style={
+            "backgroundColor": "white",
+            "padding": "24px",
+            "borderRadius": "8px",
+            "boxShadow": "0 2px 8px rgba(0,0,0,0.1)",
+        })
+    ], id="choropleth-page-container")
+
+choropleth_page = create_choropleth_page("dept")
 
 graph_page = html.Div([
     html.H2("Accidents par heure", style={"color": "#2c3e50", "borderBottom": "3px solid #3498db", "paddingBottom": "10px"}),
@@ -311,10 +439,36 @@ def display_page(about_clicks, hist_clicks, chor_clicks, graph_clicks, auth_clic
     elif button_id == "btn-histogram":
         return histogram_page
     elif button_id == "btn-choropleth":
-        return choropleth_page
+        return create_choropleth_page("dept")
     elif button_id == "btn-graph":
         return graph_page
     elif button_id == "btn-authors":
         return authors_page
     
     return about_page
+
+
+# Callback pour les boutons de sélection de carte (utilisé via JavaScript)
+# Ce callback ne s'exécute que quand les boutons existent dans le DOM
+@callback(
+    Output("page-content", "children", allow_duplicate=True),
+    [
+        Input("btn-carte-dept", "n_clicks"),
+        Input("btn-carte-commune", "n_clicks"),
+    ],
+    prevent_initial_call=True,
+    allow_duplicate=True
+)
+def update_carte_view(dept_clicks, commune_clicks):
+    """Met à jour la vue de la carte"""
+    ctx = dash.callback_context
+    
+    if not ctx.triggered:
+        return create_choropleth_page("dept")
+    
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    
+    if button_id == "btn-carte-commune":
+        return create_choropleth_page("commune")
+    else:
+        return create_choropleth_page("dept")

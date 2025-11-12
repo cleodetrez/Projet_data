@@ -6,7 +6,7 @@ import dash
 from dash import Dash, html, dcc
 from src.pages.home import layout as home_layout
 
-app = Dash(__name__)
+app = Dash(__name__, suppress_callback_exceptions=True)
 app.layout = html.Div([home_layout])
 
 if __name__ == "__main__":
