@@ -41,27 +41,58 @@ def _make_departments_choropleth():
         
         df["dept"] = df["dept"].astype(str).str.zfill(2)
         
-        # Créer la choroplèthe
-        fig = px.choropleth(
-            df,
-            geojson=geojson,
-            locations="dept",
-            color="accidents",
-            featureidkey="properties.code",
-            projection="mercator",
-            color_continuous_scale="Blues",
-            title="Accidentologie par département (France)",
-        )
-        
-        fig.update_geos(fitbounds="locations", visible=False)
-        fig.update_layout(
-            height=600,
-            margin=dict(l=0, r=0, t=40, b=0),
-            template="plotly_white",
-        )
-        
+        # Construire la choroplèthe par département
+        try:
+            fig = px.choropleth(
+                df,
+                geojson=geojson,
+                locations="dept",
+                color="accidents",
+                featureidkey="properties.code",
+                projection="mercator",
+                color_continuous_scale="Purples",
+                title="Accidentologie par département (France)",
+                hover_name="dept",
+            )
+
+            fig.update_geos(fitbounds="locations", visible=False)
+            fig.update_layout(
+                height=600,
+                margin=dict(l=0, r=0, t=40, b=0),
+                template="plotly_white",
+            )
+
+        except Exception as e:
+            print(f"Erreur construction choroplethe départements: {e}")
+            fig = go.Figure()
+            fig.add_annotation(text=f"Erreur: {str(e)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+
+        dept_style = {
+            "padding": "12px 24px",
+            "margin": "0 8px",
+            "fontSize": "14px",
+            "fontWeight": "600",
+            "cursor": "pointer",
+            "border": "2px solid #3498db",
+            "borderRadius": "6px",
+            "backgroundColor": "#3498db",
+            "color": "white",
+            "boxShadow": "0 4px 12px rgba(52, 152, 219, 0.3)",
+            "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        }
+        commune_style = {
+            "padding": "12px 24px",
+            "margin": "0 8px",
+            "fontSize": "14px",
+            "fontWeight": "600",
+            "cursor": "pointer",
+            "border": "2px solid #bdc3c7",
+            "borderRadius": "6px",
+            "backgroundColor": "#ecf0f1",
+            "color": "#7f8c8d",
+            "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        }
         return fig
-    
     except Exception as e:
         print(f"Erreur carte : {e}")
         fig = go.Figure()
@@ -127,10 +158,26 @@ def _make_communes_choropleth():
         return fig
 
 
-def _make_speed_histogram():
-    """Histogramme vitesses"""
+def _make_speed_histogram(year=2023):
+    """Histogramme des écarts de vitesse (delta_v)"""
     try:
-        sql = "SELECT mesure AS speed FROM radars WHERE mesure IS NOT NULL LIMIT 5000"
+        # Récupérer delta_v depuis la base de données
+        # Note: Pour 2021, on affichera un message car les données ne sont pas encore chargées
+        if year == 2021:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="Données 2021 non disponibles<br>(À implémenter)",
+                xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                font=dict(size=16, color="#7f8c8d")
+            )
+            return fig
+        
+        sql = """
+            SELECT (mesure - limite) AS delta_v 
+            FROM radars 
+            WHERE mesure IS NOT NULL AND limite IS NOT NULL
+            LIMIT 10000
+        """
         df = query_db(sql)
         
         if df is None or df.empty:
@@ -138,22 +185,103 @@ def _make_speed_histogram():
             fig.add_annotation(text="Aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
             return fig
         
-        df["speed"] = pd.to_numeric(df["speed"], errors="coerce")
-        df = df.dropna(subset=["speed"])
+        # Convertir en numérique
+        df["delta_v"] = pd.to_numeric(df["delta_v"], errors="coerce")
+        df = df.dropna(subset=["delta_v"])
         
         if df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="Pas de données", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            fig.add_annotation(text="Pas de données valides", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
             return fig
         
+        # Créer des catégories pour le hover
+        def categorize_delta_v(value):
+            if value < -20:
+                return "Très sous limite (-20 km/h)"
+            elif value < -10:
+                return "Sous limite (-10 à -20)"
+            elif value < 0:
+                return "Légèrement sous limite (-0 à -10)"
+            elif value == 0:
+                return "À la limite (0 km/h)"
+            elif value <= 10:
+                return "Léger excès (0 à 10 km/h)"
+            elif value <= 20:
+                return "Excès modéré (10 à 20 km/h)"
+            elif value <= 30:
+                return "Excès important (20 à 30 km/h)"
+            else:
+                return "Très gros excès (>30 km/h)"
+        
+        df["categorie"] = df["delta_v"].apply(categorize_delta_v)
+        
+        # Créer l'histogramme
         fig = px.histogram(
             df, 
-            x="speed", 
-            nbins=40,
-            title="Distribution des vitesses mesurées (2023)",
-            labels={"speed": "Vitesse (km/h)"}
+            x="delta_v", 
+            nbins=50,
+            title=f"<b>Mesures radar - Analyse des vitesses ({year})</b>",
+            labels={"delta_v": "<b>Écart de vitesse (km/h)</b>", "count": "<b>Nombre de mesures</b>"},
+            color_discrete_sequence=["#667eea"],
+            hover_data={"categorie": True},
         )
-        fig.update_layout(bargap=0.05, height=500)
+        
+        # Ajouter une ligne verticale à delta_v = 0 (limite de vitesse)
+        fig.add_vline(
+            x=0, 
+            line_dash="dash", 
+            line_color="#f093fb", 
+            line_width=3,
+            annotation_text="<b>Limite de vitesse</b>",
+            annotation_position="top right",
+            annotation_font_size=12,
+            annotation_font_color="#f093fb",
+        )
+        
+        # Ajouter des annotations pour les zones
+        fig.add_vrect(x0=-60, x1=0, fillcolor="#01d084", opacity=0.05, layer="below", line_width=0)
+        fig.add_vrect(x0=0, x1=60, fillcolor="#ff6b6b", opacity=0.05, layer="below", line_width=0)
+        
+        # Améliorer l'apparence
+        fig.update_layout(
+            height=550,
+            bargap=0.02,
+            template="plotly_white",
+            title_font_size=18,
+            title_x=0.5,
+            title_font_color="#2c3e50",
+            xaxis_title="<b>Écart de vitesse (km/h)</b><br><span style='font-size:11px; color:#7f8c8d'>Négatif = respect limite  |  Positif = excès de vitesse</span>",
+            yaxis_title="<b>Nombre de mesures</b>",
+            xaxis_title_font_size=14,
+            yaxis_title_font_size=14,
+            hovermode="x unified",
+            paper_bgcolor="white",
+            plot_bgcolor="rgba(240, 248, 255, 0.3)",
+            margin=dict(l=80, r=80, t=100, b=80),
+            font=dict(family="'Segoe UI', Tahoma, Geneva, Verdana", size=12, color="#2c3e50"),
+            showlegend=False,
+        )
+        
+        fig.update_traces(
+            marker_line_color="white",
+            marker_line_width=1,
+            marker_color="#667eea",
+            hovertemplate="<b>Écart:</b> %{x:.1f} km/h<br>" +
+                         "<b>Mesures:</b> %{y}<br>" +
+                         "<extra></extra>",
+        )
+        
+        # Améliorer les axes
+        fig.update_xaxes(
+            showgrid=True, 
+            gridwidth=1, 
+            gridcolor="rgba(200, 200, 200, 0.2)",
+            zeroline=True,
+            zerolinewidth=2,
+            zerolinecolor="rgba(240, 147, 251, 0.3)",
+        )
+        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor="rgba(200, 200, 200, 0.2)")
+        
         return fig
     
     except Exception as e:
@@ -216,72 +344,197 @@ about_page = html.Div([
         "boxShadow": "0 2px 8px rgba(0,0,0,0.1)",
     })
 ])
+    
+    
+def create_histogram_page(year=2023):
+    """Crée la page histogramme dynamiquement avec sélection d'année"""
+    fig = _make_speed_histogram(year)
+    
+    # Styles des boutons
+    style_2023 = {
+        "padding": "12px 24px",
+        "margin": "8px 0",
+        "fontSize": "15px",
+        "fontWeight": "600",
+        "cursor": "pointer",
+        "border": "2px solid #667eea",
+        "borderRadius": "6px",
+        "backgroundColor": "#667eea",
+        "color": "white",
+        "boxShadow": "0 4px 15px rgba(102, 126, 234, 0.4)",
+        "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    } if year == 2023 else {
+        "padding": "12px 24px",
+        "margin": "8px 0",
+        "fontSize": "15px",
+        "fontWeight": "600",
+        "cursor": "pointer",
+        "border": "2px solid #e8e8f0",
+        "borderRadius": "6px",
+        "backgroundColor": "#f5f5f8",
+        "color": "#999",
+        "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    }
+    
+    style_2021 = {
+        "padding": "12px 24px",
+        "margin": "8px 0",
+        "fontSize": "15px",
+        "fontWeight": "600",
+        "cursor": "pointer",
+        "border": "2px solid #667eea",
+        "borderRadius": "6px",
+        "backgroundColor": "#667eea",
+        "color": "white",
+        "boxShadow": "0 4px 15px rgba(102, 126, 234, 0.4)",
+        "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    } if year == 2021 else {
+        "padding": "12px 24px",
+        "margin": "8px 0",
+        "fontSize": "15px",
+        "fontWeight": "600",
+        "cursor": "pointer",
+        "border": "2px solid #e8e8f0",
+        "borderRadius": "6px",
+        "backgroundColor": "#f5f5f8",
+        "color": "#999",
+        "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+    }
+    
+    return html.Div([
+        html.H2("📊 Distribution des écarts de vitesse"),
+        
+        # Conteneur flex pour le graphique et les boutons
+        html.Div([
+            # Graphique (gauche)
+            html.Div([
+                dcc.Graph(figure=fig, config={"responsive": True, "displayModeBar": True}),
+            ], style={
+                "backgroundColor": "white",
+                "padding": "28px",
+                "borderRadius": "12px",
+                "boxShadow": "0 4px 20px rgba(102, 126, 234, 0.12)",
+                "flex": "1",
+                "minWidth": "0",
+                "borderTop": "4px solid #667eea",
+            }),
+            
+            # Boutons d'année (droite)
+            html.Div([
+                html.Div(
+                    "📅 Année",
+                    style={
+                        "fontSize": "15px",
+                        "fontWeight": "700",
+                        "color": "#2c3e50",
+                        "marginBottom": "20px",
+                        "textAlign": "center",
+                        "letterSpacing": "0.5px",
+                    }
+                ),
+                html.Button(
+                    "2023",
+                    id="btn-year-2023",
+                    n_clicks=0,
+                    style=style_2023
+                ),
+                html.Button(
+                    "2021",
+                    id="btn-year-2021",
+                    n_clicks=0,
+                    style=style_2021
+                ),
+                html.Hr(style={"margin": "20px 0", "borderColor": "#e8e8f0"}),
+                html.Div(
+                    "✓ Sélectionnez l'année",
+                    style={
+                        "fontSize": "12px",
+                        "color": "#bbb",
+                        "textAlign": "center",
+                        "fontStyle": "italic",
+                    }
+                ),
+            ], style={
+                "display": "flex",
+                "flexDirection": "column",
+                "justifyContent": "flex-start",
+                "width": "160px",
+                "marginLeft": "24px",
+                "padding": "28px 20px",
+                "backgroundColor": "#f8f9fc",
+                "borderRadius": "12px",
+                "boxShadow": "0 4px 20px rgba(102, 126, 234, 0.08)",
+                "borderTop": "4px solid #f093fb",
+            })
+        ], style={
+            "display": "flex",
+            "gap": "24px",
+            "alignItems": "stretch",
+            "width": "100%",
+        })
+    ])
 
-histogram_page = html.Div([
-    html.H2("Distribution des vitesses", style={"color": "#2c3e50", "borderBottom": "3px solid #3498db", "paddingBottom": "10px"}),
-    html.Div([
-        dcc.Graph(figure=_make_speed_histogram()),
-    ], style={
-        "backgroundColor": "white",
-        "padding": "24px",
-        "borderRadius": "8px",
-        "boxShadow": "0 2px 8px rgba(0,0,0,0.1)",
-    })
-])
+histogram_page = create_histogram_page(2023)
 
 def create_choropleth_page(carte_mode="dept"):
     """Crée la page choroplèthe dynamiquement"""
     if carte_mode == "commune":
         fig = _make_communes_choropleth()
         dept_style = {
-            "padding": "10px 20px",
-            "margin": "10px 5px",
+            "padding": "12px 24px",
+            "margin": "0 8px",
             "fontSize": "14px",
-            "fontWeight": "bold",
+            "fontWeight": "600",
             "cursor": "pointer",
-            "border": "2px solid #95a5a6",
-            "borderRadius": "4px",
+            "border": "2px solid #bdc3c7",
+            "borderRadius": "6px",
             "backgroundColor": "#ecf0f1",
-            "color": "#2c3e50",
+            "color": "#7f8c8d",
+            "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
         }
         commune_style = {
-            "padding": "10px 20px",
-            "margin": "10px 5px",
+            "padding": "12px 24px",
+            "margin": "0 8px",
             "fontSize": "14px",
-            "fontWeight": "bold",
+            "fontWeight": "600",
             "cursor": "pointer",
             "border": "2px solid #3498db",
-            "borderRadius": "4px",
+            "borderRadius": "6px",
             "backgroundColor": "#3498db",
             "color": "white",
+            "boxShadow": "0 4px 12px rgba(52, 152, 219, 0.3)",
+            "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
         }
     else:
         fig = _make_departments_choropleth()
         dept_style = {
-            "padding": "10px 20px",
-            "margin": "10px 5px",
+            "padding": "12px 24px",
+            "margin": "0 8px",
             "fontSize": "14px",
-            "fontWeight": "bold",
+            "fontWeight": "600",
             "cursor": "pointer",
             "border": "2px solid #3498db",
-            "borderRadius": "4px",
+            "borderRadius": "6px",
             "backgroundColor": "#3498db",
             "color": "white",
+            "boxShadow": "0 4px 12px rgba(52, 152, 219, 0.3)",
+            "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
         }
         commune_style = {
-            "padding": "10px 20px",
-            "margin": "10px 5px",
+            "padding": "12px 24px",
+            "margin": "0 8px",
             "fontSize": "14px",
-            "fontWeight": "bold",
+            "fontWeight": "600",
             "cursor": "pointer",
-            "border": "2px solid #95a5a6",
-            "borderRadius": "4px",
+            "border": "2px solid #bdc3c7",
+            "borderRadius": "6px",
             "backgroundColor": "#ecf0f1",
-            "color": "#2c3e50",
+            "color": "#7f8c8d",
+            "transition": "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
         }
     
     return html.Div([
-        html.H2("Carte choroplèthe des accidents", style={"color": "#2c3e50", "borderBottom": "3px solid #3498db", "paddingBottom": "10px"}),
+        html.H2("🗺️ Carte choroplèthe des accidents"),
         # Boutons de sélection
         html.Div([
             html.Button(
@@ -296,44 +549,56 @@ def create_choropleth_page(carte_mode="dept"):
                 n_clicks=0,
                 style=commune_style
             ),
-        ], style={"textAlign": "center", "marginBottom": "20px"}),
+        ], style={
+            "textAlign": "center", 
+            "marginBottom": "24px",
+            "display": "flex",
+            "justifyContent": "center",
+            "gap": "12px",
+        }),
         # Carte affichée
         html.Div([
-            dcc.Graph(figure=fig),
+            dcc.Graph(figure=fig, config={"responsive": True, "displayModeBar": True}),
         ], style={
             "backgroundColor": "white",
-            "padding": "24px",
-            "borderRadius": "8px",
-            "boxShadow": "0 2px 8px rgba(0,0,0,0.1)",
+            "padding": "28px",
+            "borderRadius": "12px",
+            "boxShadow": "0 4px 20px rgba(0,0,0,0.08)",
+            "borderTop": "4px solid #3498db",
         })
     ], id="choropleth-page-container")
 
 choropleth_page = create_choropleth_page("dept")
 
 graph_page = html.Div([
-    html.H2("Accidents par heure", style={"color": "#2c3e50", "borderBottom": "3px solid #3498db", "paddingBottom": "10px"}),
+    html.H2("⏰ Accidents par heure de la journée"),
     html.Div([
-        dcc.Graph(figure=_make_accidents_by_hour()),
+        dcc.Graph(figure=_make_accidents_by_hour(), config={"responsive": True, "displayModeBar": True}),
     ], style={
         "backgroundColor": "white",
-        "padding": "24px",
-        "borderRadius": "8px",
-        "boxShadow": "0 2px 8px rgba(0,0,0,0.1)",
+        "padding": "28px",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 20px rgba(0,0,0,0.08)",
+        "boxShadow": "0 4px 20px rgba(102, 126, 234, 0.12)",
+        "borderTop": "4px solid #667eea",
     })
 ])
 
 authors_page = html.Div([
-    html.H2("Auteurs", style={"color": "#2c3e50", "borderBottom": "3px solid #3498db", "paddingBottom": "10px"}),
+    html.H2("👥 Auteurs & Crédits"),
     html.Div([
-        html.P("Projet d'analyse d'accidentologie routière", style={"fontSize": "16px", "lineHeight": "1.6"}),
-        html.P("2025", style={"fontSize": "16px", "lineHeight": "1.6"}),
-        html.Hr(),
+        html.P("Projet d'analyse d'accidentologie routière en France", style={"fontSize": "16px", "lineHeight": "1.8", "fontWeight": "500"}),
+        html.P("2025", style={"fontSize": "16px", "color": "#667eea", "fontWeight": "600"}),
+        html.Hr(style={"margin": "20px 0", "borderColor": "#ecf0f1"}),
+        html.P("📚 Technologie", style={"fontSize": "15px", "fontWeight": "700", "color": "#2c3e50", "marginTop": "20px"}),
         html.P("Développé avec Dash, Plotly et SQLite", style={"fontSize": "14px", "color": "#7f8c8d"}),
+        html.P("Données : data.gouv.fr", style={"fontSize": "14px", "color": "#7f8c8d", "marginTop": "15px"}),
     ], style={
         "backgroundColor": "white",
-        "padding": "24px",
-        "borderRadius": "8px",
-        "boxShadow": "0 2px 8px rgba(0,0,0,0.1)",
+        "padding": "28px",
+        "borderRadius": "12px",
+        "boxShadow": "0 4px 20px rgba(102, 126, 234, 0.12)",
+        "borderTop": "4px solid #f093fb",
     })
 ])
 
@@ -366,12 +631,12 @@ def create_nav_button(label, button_id, active=False):
 navbar = html.Div([
     html.Div([
         html.Div([
-            html.H3("📊 Dashboard", style={"color": "white", "margin": "0 20px 0 0"}),
+            html.H3("📊 Dashboard Accidentologie", style={"color": "white", "margin": "0 20px 0 0", "letterSpacing": "0.5px"}),
         ], style={"display": "flex", "alignItems": "center"}),
         html.Div([
-            create_nav_button("About", "btn-about"),
+            create_nav_button("À Propos", "btn-about"),
             create_nav_button("Histogramme", "btn-histogram"),
-            create_nav_button("Carte Choroplèthe", "btn-choropleth"),
+            create_nav_button("Carte", "btn-choropleth"),
             create_nav_button("Graphique", "btn-graph"),
             create_nav_button("Auteurs", "btn-authors"),
         ], style={
@@ -381,14 +646,14 @@ navbar = html.Div([
             "flex": "1",
         }),
         html.Div(style={"width": "120px"}),  # Espace pour équilibre
-    ], style={
-        "display": "flex",
-        "justifyContent": "space-between",
-        "alignItems": "center",
-        "padding": "0 20px",
-        "backgroundColor": "#2c3e50",
-        "minHeight": "70px",
-        "boxShadow": "0 2px 8px rgba(0,0,0,0.15)",
+      ], style={
+      "display": "flex",
+      "justifyContent": "space-between",
+      "alignItems": "center",
+      "padding": "0 30px",
+          "backgroundColor": "#6b5bd3",
+      "minHeight": "75px",
+      "boxShadow": "0 8px 32px rgba(0,0,0,0.15)",
     })
 ], id="navbar", style={
     "position": "sticky",
@@ -404,13 +669,14 @@ navbar = html.Div([
 layout = html.Div([
     navbar,
     html.Div(id="page-content", style={
-        "padding": "30px 20px",
-        "maxWidth": "1200px",
+        "padding": "40px 30px",
+        "maxWidth": "1400px",
         "margin": "0 auto",
+        "minHeight": "calc(100vh - 75px)",
     }),
 ], style={
     "fontFamily": "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    "backgroundColor": "#f8f9fa",
+         "backgroundColor": "#efe6ff",
     "minHeight": "100vh",
 })
 
@@ -472,3 +738,28 @@ def update_carte_view(dept_clicks, commune_clicks):
         return create_choropleth_page("commune")
     else:
         return create_choropleth_page("dept")
+
+
+# Callback pour les boutons de sélection d'année dans l'histogramme
+@callback(
+    Output("page-content", "children", allow_duplicate=True),
+    [
+        Input("btn-year-2023", "n_clicks"),
+        Input("btn-year-2021", "n_clicks"),
+    ],
+    prevent_initial_call=True,
+    allow_duplicate=True
+)
+def update_histogram_year(year_2023_clicks, year_2021_clicks):
+    """Met à jour l'histogramme selon l'année sélectionnée"""
+    ctx = dash.callback_context
+    
+    if not ctx.triggered:
+        return create_histogram_page(2023)
+    
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    
+    if button_id == "btn-year-2021":
+        return create_histogram_page(2021)
+    else:
+        return create_histogram_page(2023)

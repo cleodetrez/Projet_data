@@ -7,9 +7,10 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f8f9fa;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #2c3e50;
     line-height: 1.6;
+    min-height: 100vh;
 }
 
 /* ===== NAVBAR ===== */
@@ -17,7 +18,8 @@ body {
     position: sticky;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .nav-button {
@@ -35,9 +37,9 @@ body {
 }
 
 .nav-button:hover {
-    background-color: #3498db !important;
+    background-color: #f093fb !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    box-shadow: 0 4px 12px rgba(240, 147, 251, 0.4);
 }
 
 .nav-button:active {
@@ -52,35 +54,56 @@ body {
 /* ===== PAGES DE CONTENU ===== */
 h2 {
     color: #2c3e50;
-    border-bottom: 3px solid #3498db;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
+    border-bottom: 4px solid;
+    border-image: linear-gradient(90deg, #667eea, #f093fb) 1;
+    padding-bottom: 15px;
+    margin-bottom: 30px;
     font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 h3 {
     color: white;
     margin: 0;
     font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 p {
     font-size: 16px;
-    line-height: 1.6;
-    color: #2c3e50;
+    line-height: 1.8;
+    color: #34495e;
 }
 
 /* ===== CARDS & CONTAINERS ===== */
 .page-card {
     background-color: white;
     padding: 24px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border-top: 4px solid #667eea;
 }
 
 .page-card:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.15);
+    transform: translateY(-4px);
+}
+
+/* ===== BUTTON STYLES ===== */
+button {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+button:hover {
+    transform: translateY(-2px);
+}
+
+button:active {
+    transform: translateY(0);
 }
 
 /* ===== GRAPHS & PLOTLY ===== */
