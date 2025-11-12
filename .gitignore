@@ -7,8 +7,9 @@ bdd/database.db
 data/cleaned/cleaned_2023.csv
 data/cleaned/cleaned_all.csv
 data/communes.geojson
-data/communes-version-simplifiee.geojson
+data/departements-version-simplifiee.geojson
 data/regions-versions-simplifiee.geojson
+data/cleaned/communes_avec_arrondissements.csv
 .venv
 
 # Dossiers Python

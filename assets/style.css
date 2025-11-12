@@ -1,0 +1,114 @@
+/* ===== RESET & GENERAL ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: #2c3e50;
+    line-height: 1.6;
+}
+
+/* ===== NAVBAR ===== */
+#navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.nav-button {
+    padding: 12px 24px;
+    margin: 0 5px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background-color: transparent;
+    color: white;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.nav-button:hover {
+    background-color: #3498db !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.nav-button:active {
+    transform: translateY(0);
+}
+
+.nav-button:focus {
+    outline: 2px solid #3498db;
+    outline-offset: 2px;
+}
+
+/* ===== PAGES DE CONTENU ===== */
+h2 {
+    color: #2c3e50;
+    border-bottom: 3px solid #3498db;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    font-size: 28px;
+}
+
+h3 {
+    color: white;
+    margin: 0;
+    font-size: 24px;
+}
+
+p {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #2c3e50;
+}
+
+/* ===== CARDS & CONTAINERS ===== */
+.page-card {
+    background-color: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.page-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== GRAPHS & PLOTLY ===== */
+.plotly-graph-div {
+    border-radius: 4px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .nav-button {
+        padding: 10px 16px;
+        margin: 0 3px;
+        font-size: 13px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    p {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-button {
+        padding: 8px 12px;
+        margin: 0 2px;
+        font-size: 12px;
+    }
+}
