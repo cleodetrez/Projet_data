@@ -42,7 +42,8 @@ def merge_cleaned_year(
     if year is None:
         default_pattern = "*.csv"
     else:
-        default_pattern = pattern if pattern is not None else f"*{year}*.csv"
+        # pattern spécifique: uniquement les fichiers "caract_clean_YEAR.csv"
+        default_pattern = pattern if pattern is not None else f"caract_clean_{year}.csv"
 
     files = sorted(cleaned_dir.glob(default_pattern))
 
@@ -66,12 +67,17 @@ def merge_cleaned_year(
 
     dfs = []
     for fpath in files:
+        # ignorer les fichiers radars (trop volumineux)
+        if "radar" in fpath.name.lower():
+            logger.info("ignoré (fichier radars): %s", fpath.name)
+            continue
+            
         try:
-            # lecture prioritaire avec séparateur ';' (fréquent)
-            df = pd.read_csv(fpath, low_memory=False, sep=";")
-        except (pd.errors.ParserError, UnicodeDecodeError, OSError):
-            # repli lecture auto
+            # essayer d'abord sans spécifier le séparateur (détection auto)
             df = pd.read_csv(fpath, low_memory=False)
+        except (pd.errors.ParserError, UnicodeDecodeError, OSError):
+            # repli avec séparateur ';'
+            df = pd.read_csv(fpath, low_memory=False, sep=";")
         dfs.append(df)
         logger.info(
             "lu %s -> %d lignes, %d colonnes",
@@ -114,10 +120,19 @@ def merge_cleaned_year(
 
 
 if __name__ == "__main__":
-    # exemple d'utilisation depuis la racine du projet
-    OUT = merge_cleaned_year(
+    # fusion pour 2023
+    OUT_2023 = merge_cleaned_year(
         2023,
         cleaned_dir=Path(__file__).parents[2] / "data" / "cleaned",
-        primary_key="Num_Acc",
+        primary_key="acc_id",
     )
-    print(f"saved combined file: {OUT}")
+    print(f"saved combined file 2023: {OUT_2023}")
+    
+    # fusion pour 2021
+    OUT_2021 = merge_cleaned_year(
+        2021,
+        cleaned_dir=Path(__file__).parents[2] / "data" / "cleaned",
+        primary_key="acc_id",
+    )
+    print(f"saved combined file 2021: {OUT_2021}")
+
