@@ -15,13 +15,21 @@ from sqlalchemy.orm import sessionmaker
 # configuration (tolère l'absence de `config.py`)
 # ---------------------------------------------------------------------
 try:
-    from config import caract_csv_url, radar_csv_url, raw_dir  # type: ignore
+    from config import (  # type: ignore
+        caract_csv_url,
+        radar_csv_url,
+        caract_csv_url_2021,
+        radar_csv_url_2021,
+        raw_dir,
+    )
 except ImportError:
     logging.getLogger(__name__).warning(
         "module config introuvable, utilisation des valeurs par défaut."
     )
     caract_csv_url = ""  # type: ignore[assignment]
     radar_csv_url = ""  # type: ignore[assignment]
+    caract_csv_url_2021 = ""  # type: ignore[assignment]
+    radar_csv_url_2021 = ""  # type: ignore[assignment]
     raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------
@@ -152,6 +160,28 @@ def get_radar_2023(_force_download: bool = False) -> pd.DataFrame:
         df = pd.read_csv(cleaned_path, low_memory=False)
     else:
         df = dl_csv(radar_csv_url, "radars-2023.csv")
+    save_to_db(df, "radars")
+    return df
+
+
+def get_caract_2021(_force_download: bool = False) -> pd.DataFrame:
+    """charge les caractéristiques 2021 nettoyées."""
+    cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2021.csv"
+    if cleaned_path.exists():
+        df = pd.read_csv(cleaned_path, low_memory=False)
+    else:
+        df = dl_csv(caract_csv_url_2021, "caracteristiques-2021.csv")
+    save_to_db(df, "caracteristiques")
+    return df
+
+
+def get_radar_2021(_force_download: bool = False) -> pd.DataFrame:
+    """charge les radars 2021 nettoyés."""
+    cleaned_path = raw_dir.parent / "cleaned" / "radars_delta_clean_2021.csv"
+    if cleaned_path.exists():
+        df = pd.read_csv(cleaned_path, low_memory=False)
+    else:
+        df = dl_csv(radar_csv_url_2021, "radars-2021.csv")
     save_to_db(df, "radars")
     return df
 
