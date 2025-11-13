@@ -1,4 +1,4 @@
-"""nettoie le csv caracteristiques 2023 et ajoute colonnes temporelles."""
+"""nettoie le csv caracteristiques 2021 et ajoute colonnes temporelles."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-RAW = ROOT / "data" / "raw" / "caracteristiques-2023.csv"
-OUT = ROOT / "data" / "cleaned" / "caract_clean_2023.csv"
+RAW = ROOT / "data" / "raw" / "caracteristiques-2021.csv"
+OUT = ROOT / "data" / "cleaned" / "caract_clean_2021.csv"
 
 
 def parse_hrmn(value) -> str | float:
@@ -83,7 +83,7 @@ def clean_caracteristiques() -> pd.DataFrame:
     OUT.parent.mkdir(exist_ok=True, parents=True)
     final.to_csv(OUT, index=False)
 
-    print(f"{len(final)} accidents nettoyés pour 2023")
+    print(f"{len(final)} accidents nettoyés pour 2021")
     return final
 
 
