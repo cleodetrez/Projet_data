@@ -22,20 +22,28 @@ def load_csv_to_db():
     
     engine = create_engine(DATABASE_URL)
     
-    # Fichiers à charger
-    files_to_load = {
-        "caracteristiques": CLEAN_DIR / "caract_clean.csv",
-        "radars": CLEAN_DIR / "radars_delta_clean.csv",
+    # Fichiers à charger pour 2023
+    files_2023 = {
+        "caracteristiques_2023": CLEAN_DIR / "caract_clean_2023.csv",
+        "radars_2023": CLEAN_DIR / "radars_delta_clean_2023.csv",
     }
     
-    for table_name, csv_path in files_to_load.items():
+    # Fichiers à charger pour 2021
+    files_2021 = {
+        "caracteristiques_2021": CLEAN_DIR / "caract_clean_2021.csv",
+        "radars_2021": CLEAN_DIR / "radars_delta_clean_2021.csv",
+    }
+    
+    all_files = {**files_2023, **files_2021}
+    
+    for table_name, csv_path in all_files.items():
         if not csv_path.exists():
             logger.warning(f"Fichier manquant : {csv_path}")
             continue
         
         try:
-            logger.info(f"Chargement de {csv_path} → table '{table_name}'...")
-            df = pd.read_csv(csv_path)
+            logger.info(f"Chargement de {csv_path.name} → table '{table_name}'...")
+            df = pd.read_csv(csv_path, low_memory=False)
             
             # Insérer dans la DB (remplace la table)
             df.to_sql(table_name, engine, if_exists="replace", index=False)
@@ -44,7 +52,7 @@ def load_csv_to_db():
         except Exception as e:
             logger.error(f"Erreur lors du chargement de {csv_path} : {e}")
     
-    logger.info(f"✓ Base de données créée : {DATABASE_PATH}")
+    logger.info(f"✓ Base de données mise à jour : {DATABASE_PATH}")
 
 if __name__ == "__main__":
     load_csv_to_db()
