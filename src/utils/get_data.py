@@ -14,22 +14,41 @@ from sqlalchemy.orm import sessionmaker
 # ---------------------------------------------------------------------
 # configuration (tolère l'absence de `config.py`)
 # ---------------------------------------------------------------------
-try:
-    from config import (  # type: ignore
-        caract_csv_url,
-        radar_csv_url,
-        caract_csv_url_2021,
-        radar_csv_url_2021,
-        raw_dir,
-    )
-except ImportError:
-    logging.getLogger(__name__).warning(
-        "module config introuvable, utilisation des valeurs par défaut."
-    )
+config_path = Path(__file__).resolve().parents[2] / "config.py"
+if config_path.exists():
+    import sys
+    sys.path.insert(0, str(config_path.parent))
+    try:
+        from config import (  # type: ignore
+            caract_csv_url,
+            radar_csv_url,
+            caract_csv_url_2021,
+            radar_csv_url_2021,
+            caract_csv_url_2020,
+            caract_csv_url_2022,
+            caract_csv_url_2024,
+            raw_dir,
+        )
+    except ImportError:
+        logging.getLogger(__name__).warning(
+            "module config introuvable, utilisation des valeurs par défaut."
+        )
+        caract_csv_url = ""  # type: ignore[assignment]
+        radar_csv_url = ""  # type: ignore[assignment]
+        caract_csv_url_2021 = ""  # type: ignore[assignment]
+        radar_csv_url_2021 = ""  # type: ignore[assignment]
+        caract_csv_url_2020 = ""  # type: ignore[assignment]
+        caract_csv_url_2022 = ""  # type: ignore[assignment]
+        caract_csv_url_2024 = ""  # type: ignore[assignment]
+        raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
+else:
     caract_csv_url = ""  # type: ignore[assignment]
     radar_csv_url = ""  # type: ignore[assignment]
     caract_csv_url_2021 = ""  # type: ignore[assignment]
     radar_csv_url_2021 = ""  # type: ignore[assignment]
+    caract_csv_url_2020 = ""  # type: ignore[assignment]
+    caract_csv_url_2022 = ""  # type: ignore[assignment]
+    caract_csv_url_2024 = ""  # type: ignore[assignment]
     raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------
@@ -172,6 +191,36 @@ def get_caract_2021(_force_download: bool = False) -> pd.DataFrame:
     else:
         df = dl_csv(caract_csv_url_2021, "caracteristiques-2021.csv")
     save_to_db(df, "caracteristiques")
+    return df
+
+
+def get_caract_2020(_force_download: bool = False) -> pd.DataFrame:
+    """charge les caractéristiques 2020 nettoyées."""
+    cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2020.csv"
+    if cleaned_path.exists():
+        df = pd.read_csv(cleaned_path, low_memory=False)
+    else:
+        df = dl_csv(caract_csv_url_2020, "caracteristiques-2020.csv")
+    return df
+
+
+def get_caract_2022(_force_download: bool = False) -> pd.DataFrame:
+    """charge les caractéristiques 2022 nettoyées."""
+    cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2022.csv"
+    if cleaned_path.exists():
+        df = pd.read_csv(cleaned_path, low_memory=False)
+    else:
+        df = dl_csv(caract_csv_url_2022, "caracteristiques-2022.csv")
+    return df
+
+
+def get_caract_2024(_force_download: bool = False) -> pd.DataFrame:
+    """charge les caractéristiques 2024 nettoyées."""
+    cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2024.csv"
+    if cleaned_path.exists():
+        df = pd.read_csv(cleaned_path, low_memory=False)
+    else:
+        df = dl_csv(caract_csv_url_2024, "caracteristiques-2024.csv")
     return df
 
 
