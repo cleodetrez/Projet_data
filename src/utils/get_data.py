@@ -133,15 +133,25 @@ def save_to_db(df: pd.DataFrame, table_name: str) -> None:
 
 
 def get_caract_2023(_force_download: bool = False) -> pd.DataFrame:
-    """charge les caractéristiques 2023 (télécharge si absent)."""
-    df = dl_csv(caract_csv_url, "caracteristiques-2023.csv")
+    """charge les caractéristiques 2023 nettoyées."""
+    # Charger le fichier nettoyé si disponible, sinon le fichier brut
+    cleaned_path = raw_dir.parent / "cleaned" / "caract_clean.csv"
+    if cleaned_path.exists():
+        df = pd.read_csv(cleaned_path, low_memory=False)
+    else:
+        df = dl_csv(caract_csv_url, "caracteristiques-2023.csv")
     save_to_db(df, "caracteristiques")
     return df
 
 
 def get_radar_2023(_force_download: bool = False) -> pd.DataFrame:
-    """charge les radars 2023 (télécharge si absent)."""
-    df = dl_csv(radar_csv_url, "radars-2023.csv")
+    """charge les radars 2023 nettoyés."""
+    # Charger le fichier nettoyé si disponible, sinon le fichier brut
+    cleaned_path = raw_dir.parent / "cleaned" / "radars_delta_clean.csv"
+    if cleaned_path.exists():
+        df = pd.read_csv(cleaned_path, low_memory=False)
+    else:
+        df = dl_csv(radar_csv_url, "radars-2023.csv")
     save_to_db(df, "radars")
     return df
 
@@ -157,7 +167,7 @@ def get_accidents_by_department(department: str) -> pd.DataFrame:
     """exemple d'accès : accidents pour un département."""
     sql = """
         SELECT * FROM caracteristiques
-        WHERE departement = :dept
+        WHERE dep = :dept
     """
     return query_db(sql, {"dept": department})
 

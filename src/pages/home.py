@@ -333,7 +333,7 @@ def _make_accidents_by_day_line():
     """courbe : évolution du nombre d'accidents par heure."""
     try:
         sql = (
-            "SELECT CAST(SUBSTR(heure, 1, 2) AS INTEGER) AS heure_num, "
+            "SELECT CAST(SUBSTR(heure,1,2) AS INTEGER) AS heure_num, "
             "COUNT(*) AS accidents "
             "FROM caracteristiques "
             "WHERE heure IS NOT NULL "
