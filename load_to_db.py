@@ -5,6 +5,7 @@ import pandas as pd
 from pathlib import Path
 from sqlalchemy import create_engine
 import logging
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,25 +19,33 @@ DATABASE_PATH = DB_DIR / "database.db"
 DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 def load_csv_to_db():
-    """Charge les fichiers CSV nettoyés dans la base SQLite."""
+    """Charge dynamiquement les fichiers CSV nettoyés (toutes années) dans SQLite."""
     
     engine = create_engine(DATABASE_URL)
     
-    # Fichiers à charger pour 2023
-    files_2023 = {
-        "caracteristiques_2023": CLEAN_DIR / "caract_clean_2023.csv",
-        "radars_2023": CLEAN_DIR / "radars_delta_clean_2023.csv",
-    }
+    all_files: dict[str, Path] = {}
     
-    # Fichiers à charger pour 2021
-    files_2021 = {
-        "caracteristiques_2021": CLEAN_DIR / "caract_clean_2021.csv",
-        "radars_2021": CLEAN_DIR / "radars_delta_clean_2021.csv",
-    }
+    # Découvrir tous les fichiers caract_clean_YYYY.csv -> caracteristiques_YYYY
+    for p in CLEAN_DIR.glob("caract_clean_*.csv"):
+        m = re.search(r"(\d{4})", p.name)
+        if not m:
+            continue
+        year = m.group(1)
+        all_files[f"caracteristiques_{year}"] = p
     
-    all_files = {**files_2023, **files_2021}
+    # Découvrir tous les fichiers radars_delta_clean_YYYY.csv -> radars_YYYY
+    for p in CLEAN_DIR.glob("radars_delta_clean_*.csv"):
+        m = re.search(r"(\d{4})", p.name)
+        if not m:
+            continue
+        year = m.group(1)
+        all_files[f"radars_{year}"] = p
     
-    for table_name, csv_path in all_files.items():
+    if not all_files:
+        logger.warning(f"Aucun fichier nettoyé trouvé dans {CLEAN_DIR}")
+        return
+    
+    for table_name, csv_path in sorted(all_files.items()):
         if not csv_path.exists():
             logger.warning(f"Fichier manquant : {csv_path}")
             continue
