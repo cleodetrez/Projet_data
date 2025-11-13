@@ -33,15 +33,16 @@ except ImportError:  # pragma: no cover
 # composants des pages
 # ============================================================================
 
-def _make_departments_choropleth():
+def _make_departments_choropleth(year=2023):
     """carte choroplèthe par département."""
     try:
         with GEOJSON_PATH.open("r", encoding="utf-8") as f:
             geojson = json.load(f)
 
+        table_name = f"caracteristiques_{year}"
         sql = (
-            "SELECT dep AS dept, COUNT(*) AS accidents "
-            "FROM caracteristiques GROUP BY dep"
+            f"SELECT dep AS dept, COUNT(*) AS accidents "
+            f"FROM {table_name} GROUP BY dep"
         )
         df = query_db(sql)
 
@@ -92,7 +93,7 @@ def _make_departments_choropleth():
         return fig
 
 
-def _make_communes_choropleth():
+def _make_communes_choropleth(year=2023):
     """carte choroplèthe par commune (gère les arrondissements)."""
     try:
         if not COMMUNES_GEOJSON_PATH.exists():
@@ -110,11 +111,12 @@ def _make_communes_choropleth():
         with COMMUNES_GEOJSON_PATH.open("r", encoding="utf-8") as f:
             geojson = json.load(f)
 
+        table_name = f"caracteristiques_{year}"
         sql = (
-            "SELECT com AS code_commune, COUNT(*) AS accidents "
-            "FROM caracteristiques "
-            "WHERE com IS NOT NULL "
-            "GROUP BY com"
+            f"SELECT com AS code_commune, COUNT(*) AS accidents "
+            f"FROM {table_name} "
+            f"WHERE com IS NOT NULL "
+            f"GROUP BY com"
         )
         df = query_db(sql)
 
@@ -189,24 +191,13 @@ def _make_communes_choropleth():
 def _make_speed_histogram(year=2023):
     """histogramme des écarts de vitesse."""
     try:
-        if year == 2021:
-            fig = go.Figure()
-            fig.add_annotation(
-                text="données 2021 non disponibles (à implémenter)",
-                xref="paper",
-                yref="paper",
-                x=0.5,
-                y=0.5,
-                showarrow=False,
-                font={"size": 16, "color": "#7f8c8d"},
-            )
-            return fig
-
+        table_name = f"radars_{year}"
+        
         sql = (
-            "SELECT (mesure - limite) AS delta_v "
-            "FROM radars "
-            "WHERE mesure IS NOT NULL AND limite IS NOT NULL "
-            "LIMIT 10000"
+            f"SELECT (mesure - limite) AS delta_v "
+            f"FROM {table_name} "
+            f"WHERE mesure IS NOT NULL AND limite IS NOT NULL "
+            f"LIMIT 10000"
         )
         df = query_db(sql)
 
@@ -350,18 +341,38 @@ def _make_speed_histogram(year=2023):
         return fig
 
 
-def _make_accidents_by_day_line():
-    """courbe : évolution du nombre d'accidents par heure."""
+def _make_accidents_by_day_line(year=2023, agg_filter: int | str | None = None):
+    """courbe : évolution du nombre d'accidents par heure.
+
+    year: 2021 | 2023 | "all" pour agréger les deux années.
+    agg_filter: 1 (agglomération) | 2 (hors agglomération) | "all" | None.
+    """
     try:
-        sql = (
-            "SELECT CAST(SUBSTR(heure,1,2) AS INTEGER) AS heure_num, "
-            "COUNT(*) AS accidents "
-            "FROM caracteristiques "
-            "WHERE heure IS NOT NULL "
-            "GROUP BY heure_num "
-            "ORDER BY heure_num"
-        )
-        df = query_db(sql)
+        def _query_one(y: int) -> pd.DataFrame:
+            table_name = f"caracteristiques_{y}"
+            where_parts = ["heure IS NOT NULL"]
+            params = {}
+            if agg_filter in (1, 2):
+                where_parts.append("CAST(agg AS INTEGER) = :agg")
+                params["agg"] = agg_filter
+            where_clause = " AND ".join(where_parts)
+            sql = (
+                f"SELECT CAST(SUBSTR(heure,1,2) AS INTEGER) AS heure_num, "
+                f"COUNT(*) AS accidents "
+                f"FROM {table_name} "
+                f"WHERE {where_clause} "
+                f"GROUP BY heure_num "
+                f"ORDER BY heure_num"
+            )
+            return query_db(sql, params)
+
+        if isinstance(year, str) and year == "all":
+            df1 = _query_one(2021)
+            df2 = _query_one(2023)
+            df = pd.concat([df1, df2], ignore_index=True)
+            df = df.groupby("heure_num", as_index=False).agg({"accidents": "sum"})
+        else:
+            df = _query_one(int(year))
 
         if df is None or df.empty:
             fig = go.Figure()
@@ -462,14 +473,34 @@ def _make_accidents_by_day_line():
         return fig
 
 
-def _make_accidents_pie_chart():
-    """camembert : distribution des accidents par type d'agglomération."""
+def _make_accidents_pie_chart(year=2023, agg_filter: int | str | None = None):
+    """camembert : distribution des accidents par type d'agglomération.
+
+    year: 2021 | 2023 | "all" pour agréger les deux années.
+    agg_filter: 1 (agglomération) | 2 (hors agglomération) | "all" | None.
+    """
     try:
-        sql = (
-            "SELECT agg, COUNT(*) AS count "
-            "FROM caracteristiques WHERE agg IS NOT NULL GROUP BY agg"
-        )
-        df = query_db(sql)
+        def _query_one(y: int) -> pd.DataFrame:
+            table_name = f"caracteristiques_{y}"
+            where_parts = ["agg IS NOT NULL"]
+            params = {}
+            if agg_filter in (1, 2):
+                where_parts.append("CAST(agg AS INTEGER) = :agg")
+                params["agg"] = agg_filter
+            where_clause = " AND ".join(where_parts)
+            sql = (
+                f"SELECT agg, COUNT(*) AS count "
+                f"FROM {table_name} WHERE {where_clause} GROUP BY agg"
+            )
+            return query_db(sql, params)
+
+        if isinstance(year, str) and year == "all":
+            df1 = _query_one(2021)
+            df2 = _query_one(2023)
+            df = pd.concat([df1, df2], ignore_index=True)
+            df = df.groupby("agg", as_index=False).agg({"count": "sum"})
+        else:
+            df = _query_one(int(year))
 
         if df is None or df.empty:
             fig = go.Figure()
@@ -692,10 +723,10 @@ def create_histogram_page(year=2023):
 histogram_page = create_histogram_page(2023)
 
 
-def create_choropleth_page(carte_mode="dept"):
+def create_choropleth_page(carte_mode="dept", year=2023):
     """crée la page choroplèthe dynamiquement."""
     if carte_mode == "commune":
-        fig = _make_communes_choropleth()
+        fig = _make_communes_choropleth(year)
         dept_style = {
             "padding": "12px 24px",
             "margin": "0 8px",
@@ -722,7 +753,7 @@ def create_choropleth_page(carte_mode="dept"):
             "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
         }
     else:
-        fig = _make_departments_choropleth()
+        fig = _make_departments_choropleth(year)
         dept_style = {
             "padding": "12px 24px",
             "margin": "0 8px",
@@ -749,6 +780,34 @@ def create_choropleth_page(carte_mode="dept"):
             "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
         }
 
+    # Styles pour les boutons année
+    active_year_style = {
+        "padding": "10px 20px",
+        "margin": "0 4px",
+        "fontSize": "13px",
+        "fontWeight": "600",
+        "cursor": "pointer",
+        "border": "2px solid #667eea",
+        "borderRadius": "6px",
+        "backgroundColor": "#667eea",
+        "color": "white",
+        "boxShadow": "0 2px 8px rgba(102, 126, 234, 0.3)",
+    }
+    inactive_year_style = {
+        "padding": "10px 20px",
+        "margin": "0 4px",
+        "fontSize": "13px",
+        "fontWeight": "600",
+        "cursor": "pointer",
+        "border": "2px solid #e8e8f0",
+        "borderRadius": "6px",
+        "backgroundColor": "#f5f5f8",
+        "color": "#999",
+    }
+    
+    year_2023_style = active_year_style if year == 2023 else inactive_year_style
+    year_2021_style = active_year_style if year == 2021 else inactive_year_style
+
     return html.Div(
         [
             html.H2("carte choroplèthe des accidents"),
@@ -756,6 +815,9 @@ def create_choropleth_page(carte_mode="dept"):
                 [
                     html.Button("vue par département", id="btn-carte-dept", n_clicks=0, style=dept_style),
                     html.Button("vue par commune", id="btn-carte-commune", n_clicks=0, style=commune_style),
+                    html.Div(style={"width": "40px"}),  # Spacer
+                    html.Button("2023", id="btn-carte-year-2023", n_clicks=0, style=year_2023_style),
+                    html.Button("2021", id="btn-carte-year-2021", n_clicks=0, style=year_2021_style),
                 ],
                 style={
                     "textAlign": "center",
@@ -763,6 +825,7 @@ def create_choropleth_page(carte_mode="dept"):
                     "display": "flex",
                     "justifyContent": "center",
                     "gap": "12px",
+                    "alignItems": "center",
                 },
             ),
             html.Div(
@@ -841,6 +904,7 @@ graph_page = html.Div(
                                     options=[
                                         {"label": "toutes", "value": "all"},
                                         {"label": "2023", "value": 2023},
+                                        {"label": "2021", "value": 2021},
                                     ],
                                     value="all",
                                     style={"width": "100%"},
@@ -979,6 +1043,7 @@ graph_page = html.Div(
                             },
                         ),
                         dcc.Graph(
+                            id="graph-accidents-heure",
                             figure=_make_accidents_by_day_line(),
                             config={"responsive": True, "displayModeBar": True},
                         ),
@@ -1011,6 +1076,7 @@ graph_page = html.Div(
                             },
                         ),
                         dcc.Graph(
+                            id="graph-accidents-pie",
                             figure=_make_accidents_pie_chart(),
                             config={"responsive": True, "displayModeBar": True},
                         ),
@@ -1220,17 +1286,34 @@ def display_page(_about_clicks, _hist_clicks, _chor_clicks, _graph_clicks, _auth
 
 @callback(
     Output("page-content", "children", allow_duplicate=True),
-    [Input("btn-carte-dept", "n_clicks"), Input("btn-carte-commune", "n_clicks")],
+    [
+        Input("btn-carte-dept", "n_clicks"),
+        Input("btn-carte-commune", "n_clicks"),
+        Input("btn-carte-year-2023", "n_clicks"),
+        Input("btn-carte-year-2021", "n_clicks"),
+    ],
     prevent_initial_call=True,
 )
-def update_carte_view(_dept_clicks, _commune_clicks):
-    """met à jour la vue de la carte."""
+def update_carte_view(_dept_clicks, _commune_clicks, _year_2023_clicks, _year_2021_clicks):
+    """met à jour la vue de la carte selon le mode et l'année."""
     ctx = dash.callback_context
     if not ctx.triggered:
-        return create_choropleth_page("dept")
+        return create_choropleth_page("dept", 2023)
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    return create_choropleth_page("commune" if button_id == "btn-carte-commune" else "dept")
+    
+    # Déterminer le mode actuel (dept ou commune) et l'année
+    # Par défaut dept 2023, mais on essaie de conserver l'état
+    if button_id in ["btn-carte-dept", "btn-carte-commune"]:
+        mode = "commune" if button_id == "btn-carte-commune" else "dept"
+        # Garder l'année actuelle (on ne peut pas facilement la récupérer, donc 2023 par défaut)
+        return create_choropleth_page(mode, 2023)
+    elif button_id in ["btn-carte-year-2023", "btn-carte-year-2021"]:
+        year = 2021 if button_id == "btn-carte-year-2021" else 2023
+        # Garder le mode actuel (on ne peut pas facilement le récupérer, donc dept par défaut)
+        return create_choropleth_page("dept", year)
+    
+    return create_choropleth_page("dept", 2023)
 
 
 @callback(
@@ -1246,3 +1329,25 @@ def update_histogram_year(_year_2023_clicks, _year_2021_clicks):
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
     return create_histogram_page(2021 if button_id == "btn-year-2021" else 2023)
+
+
+@callback(
+    [Output("graph-accidents-heure", "figure"), Output("graph-accidents-pie", "figure")],
+    [Input("filter-annee", "value"), Input("filter-agglomeration", "value")],
+)
+def update_graph_page_charts(annee, agg_value):
+    """met à jour les graphiques selon l'année et l'agglomération."""
+    year = annee  # peut être 2021, 2023 ou "all"
+
+    # normaliser la valeur d'agglomération (peut arriver sous forme de chaîne)
+    if agg_value in (1, 2):
+        agg_filter = agg_value
+    elif isinstance(agg_value, str) and agg_value in ("1", "2"):
+        agg_filter = int(agg_value)
+    else:
+        agg_filter = None
+
+    return (
+        _make_accidents_by_day_line(year, agg_filter=agg_filter),
+        _make_accidents_pie_chart(year, agg_filter=agg_filter),
+    )

@@ -75,7 +75,7 @@ def clean_caracteristiques() -> pd.DataFrame:
     # colonnes finales à garder
     wanted = [
         "acc_id", "annee", "mois", "jour", "heure",
-        "lat", "lon", "dep", "com"
+        "lat", "lon", "dep", "com", "agg"
     ]
     final_cols = [c for c in wanted if c in df.columns]
     final = df[final_cols].dropna(subset=["lat", "lon"])
