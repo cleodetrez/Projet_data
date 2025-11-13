@@ -135,7 +135,7 @@ def save_to_db(df: pd.DataFrame, table_name: str) -> None:
 def get_caract_2023(_force_download: bool = False) -> pd.DataFrame:
     """charge les caractéristiques 2023 nettoyées."""
     # Charger le fichier nettoyé si disponible, sinon le fichier brut
-    cleaned_path = raw_dir.parent / "cleaned" / "caract_clean.csv"
+    cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2023.csv"
     if cleaned_path.exists():
         df = pd.read_csv(cleaned_path, low_memory=False)
     else:
@@ -147,7 +147,7 @@ def get_caract_2023(_force_download: bool = False) -> pd.DataFrame:
 def get_radar_2023(_force_download: bool = False) -> pd.DataFrame:
     """charge les radars 2023 nettoyés."""
     # Charger le fichier nettoyé si disponible, sinon le fichier brut
-    cleaned_path = raw_dir.parent / "cleaned" / "radars_delta_clean.csv"
+    cleaned_path = raw_dir.parent / "cleaned" / "radars_delta_clean_2023.csv"
     if cleaned_path.exists():
         df = pd.read_csv(cleaned_path, low_memory=False)
     else:

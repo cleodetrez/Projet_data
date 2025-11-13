@@ -6,7 +6,7 @@ import numpy as np
 
 ROOT  = Path(__file__).resolve().parents[2]
 RAW_R = ROOT / "data/raw/radars-2023.csv"
-OUT   = ROOT / "data/cleaned/radars_delta_clean.csv"
+OUT   = ROOT / "data/cleaned/radars_delta_clean_2023.csv"
 
 project = pyproj.Transformer.from_crs("EPSG:2154", "EPSG:4326", always_xy=True)
 

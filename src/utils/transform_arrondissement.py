@@ -14,13 +14,13 @@ print("chargement des données...")
 # le fichier `caract_clean.csv` peut utiliser un séparateur détecté automatiquement
 try:
     df_accidents = pd.read_csv(
-        "data/cleaned/caract_clean.csv",
+        "data/cleaned/caract_clean_2023.csv",
         sep=None,
         engine="python",
     )
 except (OSError, UnicodeDecodeError, pd.errors.ParserError):
     # repli si la détection échoue
-    df_accidents = pd.read_csv("data/cleaned/caract_clean.csv")
+    df_accidents = pd.read_csv("data/cleaned/caract_clean_2023.csv")
 
 df_arrondissements = pd.read_csv(
     "data/cleaned/communes_avec_arrondissements.csv",

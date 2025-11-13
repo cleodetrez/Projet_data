@@ -1,16 +1,15 @@
-# Fichiers spécifiques
-data/raw/caracterisques.csv
-data/raw/radars-2023.csv
-data/cleaned/radars_delta_clean.csv
-data/cleaned/caract_clean.csv
-bdd/database.db
-data/cleaned/cleaned_2023.csv
-data/cleaned/cleaned_all.csv
-data/communes.geojson
-data/departements-version-simplifiee.geojson
-data/regions-versions-simplifiee.geojson
-data/cleaned/communes_avec_arrondissements.csv
-.venv
+# Tous les fichiers de données
+data/raw/*.csv
+data/cleaned/*.csv
+bdd/*.db
+
+# GeoJSON volumineux
+data/*.geojson
+*.geojson
+
+# Environnement virtuel
+.venv/
+venv/
 
 # Dossiers Python
 **/__pycache__/
