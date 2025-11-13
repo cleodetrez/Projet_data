@@ -7,6 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 import json
+import re
 
 import dash
 from dash import html, dcc, callback, Input, Output
@@ -27,6 +28,44 @@ try:
 except ImportError:  # pragma: no cover
     def query_db(*_args, **_kwargs):
         raise ImportError("src.utils.get_data introuvable")
+
+
+# ============================================================================
+# utilitaires dynamiques
+# ============================================================================
+
+def _available_years() -> list[int]:
+    """Retourne la liste des années disponibles selon les tables 'caracteristiques_YYYY'."""
+    try:
+        df = query_db(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'caracteristiques_%'"
+        )
+        years: list[int] = []
+        for name in df["name"] if "name" in df.columns else []:  # type: ignore
+            m = re.match(r"caracteristiques_(\d{4})$", str(name))
+            if m:
+                years.append(int(m.group(1)))
+        years = sorted(set(years))
+        return years if years else [2023, 2021]
+    except Exception:
+        return [2023, 2021]
+
+
+def _available_radar_years() -> list[int]:
+    """Retourne la liste des années avec données radars disponibles."""
+    try:
+        df = query_db(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'radars_%'"
+        )
+        years: list[int] = []
+        for name in df["name"] if "name" in df.columns else []:  # type: ignore
+            m = re.match(r"radars_(\d{4})$", str(name))
+            if m:
+                years.append(int(m.group(1)))
+        years = sorted(set(years))
+        return years if years else [2023, 2021]
+    except Exception:
+        return [2023, 2021]
 
 
 # ============================================================================
@@ -652,6 +691,17 @@ def create_histogram_page(year=2023):
     style_2023 = active_btn if year == 2023 else inactive_btn
     style_2021 = active_btn if year == 2021 else inactive_btn
 
+    radar_years = sorted(_available_radar_years(), reverse=True)
+    year_buttons = [
+        html.Button(
+            str(y),
+            id=f"btn-year-{y}",
+            n_clicks=0,
+            style=active_btn if y == year else inactive_btn,
+        )
+        for y in radar_years
+    ]
+
     return html.Div(
         [
             html.H2("distribution des écarts de vitesse"),
@@ -687,8 +737,7 @@ def create_histogram_page(year=2023):
                                     "letterSpacing": "0.5px",
                                 },
                             ),
-                            html.Button("2023", id="btn-year-2023", n_clicks=0, style=style_2023),
-                            html.Button("2021", id="btn-year-2021", n_clicks=0, style=style_2021),
+                            *year_buttons,
                             html.Hr(style={"margin": "20px 0", "borderColor": "#e8e8f0"}),
                             html.Div(
                                 "sélectionnez l’année",
@@ -720,7 +769,7 @@ def create_histogram_page(year=2023):
     )
 
 
-histogram_page = create_histogram_page(2023)
+histogram_page = create_histogram_page()
 
 
 def create_choropleth_page(carte_mode="dept", year=2023):
@@ -805,8 +854,16 @@ def create_choropleth_page(carte_mode="dept", year=2023):
         "color": "#999",
     }
     
-    year_2023_style = active_year_style if year == 2023 else inactive_year_style
-    year_2021_style = active_year_style if year == 2021 else inactive_year_style
+    available_carte_years = sorted(_available_years(), reverse=True)
+    year_buttons = [
+        html.Button(
+            str(y),
+            id=f"btn-carte-year-{y}",
+            n_clicks=0,
+            style=active_year_style if y == year else inactive_year_style,
+        )
+        for y in available_carte_years
+    ]
 
     return html.Div(
         [
@@ -816,8 +873,7 @@ def create_choropleth_page(carte_mode="dept", year=2023):
                     html.Button("vue par département", id="btn-carte-dept", n_clicks=0, style=dept_style),
                     html.Button("vue par commune", id="btn-carte-commune", n_clicks=0, style=commune_style),
                     html.Div(style={"width": "40px"}),  # Spacer
-                    html.Button("2023", id="btn-carte-year-2023", n_clicks=0, style=year_2023_style),
-                    html.Button("2021", id="btn-carte-year-2021", n_clicks=0, style=year_2021_style),
+                    *year_buttons,
                 ],
                 style={
                     "textAlign": "center",
@@ -901,11 +957,10 @@ graph_page = html.Div(
                                 ),
                                 dcc.Dropdown(
                                     id="filter-annee",
-                                    options=[
-                                        {"label": "toutes", "value": "all"},
-                                        {"label": "2023", "value": 2023},
-                                        {"label": "2021", "value": 2021},
-                                    ],
+                                    options=(
+                                        [{"label": "toutes", "value": "all"}]
+                                        + [{"label": str(y), "value": y} for y in sorted(_available_years(), reverse=True)]
+                                    ),
                                     value="all",
                                     style={"width": "100%"},
                                     clearable=False,
@@ -1289,46 +1344,50 @@ def display_page(_about_clicks, _hist_clicks, _chor_clicks, _graph_clicks, _auth
     [
         Input("btn-carte-dept", "n_clicks"),
         Input("btn-carte-commune", "n_clicks"),
-        Input("btn-carte-year-2023", "n_clicks"),
-        Input("btn-carte-year-2021", "n_clicks"),
+        *[Input(f"btn-carte-year-{y}", "n_clicks") for y in _available_years()],
     ],
     prevent_initial_call=True,
 )
-def update_carte_view(_dept_clicks, _commune_clicks, _year_2023_clicks, _year_2021_clicks):
+def update_carte_view(*_args):
     """met à jour la vue de la carte selon le mode et l'année."""
     ctx = dash.callback_context
     if not ctx.triggered:
-        return create_choropleth_page("dept", 2023)
+        default_year = _available_years()[-1] if _available_years() else 2023
+        return create_choropleth_page("dept", default_year)
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
     
-    # Déterminer le mode actuel (dept ou commune) et l'année
-    # Par défaut dept 2023, mais on essaie de conserver l'état
+    # Déterminer le mode (dept ou commune)
     if button_id in ["btn-carte-dept", "btn-carte-commune"]:
         mode = "commune" if button_id == "btn-carte-commune" else "dept"
-        # Garder l'année actuelle (on ne peut pas facilement la récupérer, donc 2023 par défaut)
-        return create_choropleth_page(mode, 2023)
-    elif button_id in ["btn-carte-year-2023", "btn-carte-year-2021"]:
-        year = 2021 if button_id == "btn-carte-year-2021" else 2023
-        # Garder le mode actuel (on ne peut pas facilement le récupérer, donc dept par défaut)
+        default_year = _available_years()[-1] if _available_years() else 2023
+        return create_choropleth_page(mode, default_year)
+    
+    # Déterminer l'année
+    m = re.match(r"btn-carte-year-(\d{4})", button_id)
+    if m:
+        year = int(m.group(1))
         return create_choropleth_page("dept", year)
     
-    return create_choropleth_page("dept", 2023)
+    default_year = _available_years()[-1] if _available_years() else 2023
+    return create_choropleth_page("dept", default_year)
 
 
 @callback(
     Output("page-content", "children", allow_duplicate=True),
-    [Input("btn-year-2023", "n_clicks"), Input("btn-year-2021", "n_clicks")],
+    [Input(f"btn-year-{y}", "n_clicks") for y in _available_radar_years()],
     prevent_initial_call=True,
 )
-def update_histogram_year(_year_2023_clicks, _year_2021_clicks):
+def update_histogram_year(*_args):
     """met à jour l'histogramme selon l'année sélectionnée."""
     ctx = dash.callback_context
     if not ctx.triggered:
-        return create_histogram_page(2023)
+        return create_histogram_page()
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    return create_histogram_page(2021 if button_id == "btn-year-2021" else 2023)
+    m = re.match(r"btn-year-(\d{4})", button_id)
+    year = int(m.group(1)) if m else None
+    return create_histogram_page(year)
 
 
 @callback(
