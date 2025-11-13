@@ -93,7 +93,7 @@ def _make_departments_choropleth():
 
 
 def _make_communes_choropleth():
-    """carte choroplèthe par commune."""
+    """carte choroplèthe par commune (gère les arrondissements)."""
     try:
         if not COMMUNES_GEOJSON_PATH.exists():
             fig = go.Figure()
@@ -130,7 +130,28 @@ def _make_communes_choropleth():
             )
             return fig
 
+        # Convertir code commune en string et padding
         df["code_commune"] = df["code_commune"].astype(str).str.zfill(5)
+        
+        # Mapping des arrondissements vers codes INSEE commune
+        # Paris: 75101-75120 -> 75056
+        # Lyon: 69381-69389 -> 69123
+        # Marseille: 13201-13216 -> 13055
+        arrondissement_map = {}
+        for i in range(1, 21):  # Paris 20 arrondissements
+            arrondissement_map[f"751{i:02d}"] = "75056"
+        for i in range(1, 10):  # Lyon 9 arrondissements
+            arrondissement_map[f"6938{i}"] = "69123"
+        for i in range(1, 17):  # Marseille 16 arrondissements
+            arrondissement_map[f"132{i:02d}"] = "13055"
+        
+        # Appliquer le mapping
+        df["code_commune"] = df["code_commune"].apply(
+            lambda x: arrondissement_map.get(x, x)
+        )
+        
+        # Agréger les accidents après transformation (pour grouper les arrondissements)
+        df = df.groupby("code_commune", as_index=False).agg({"accidents": "sum"})
 
         fig = px.choropleth(
             df,
