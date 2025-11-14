@@ -474,35 +474,23 @@ def _make_time_series(year=2023, agg_filter: int | str | None = None, unit: str 
             )
             return query_db(sql, params)
 
+        show_leg = False
+        overlay_sets: list[tuple[int, pd.DataFrame]] = []
         if isinstance(year, str) and year == "all":
-            parts = [
-                _query_one(y) for y in _available_years()
-            ]
-            parts = [p for p in parts if p is not None and not p.empty]
-            if parts:
-                df = pd.concat(parts, ignore_index=True).groupby("x", as_index=False).agg({"accidents": "sum"})
-            else:
-                df = pd.DataFrame(columns=["x", "accidents"])  # empty
+            for y in sorted(_available_years()):
+                d = _query_one(y)
+                if d is not None and not d.empty:
+                    overlay_sets.append((y, d.sort_values(by="x")))
+            show_leg = len(overlay_sets) > 1
         else:
-            df = _query_one(int(year))
+            d = _query_one(int(year))
+            if d is not None and not d.empty:
+                overlay_sets.append((int(year), d.sort_values(by="x")))
 
-        if df is None or df.empty:
+        if not overlay_sets:
             fig = go.Figure()
             fig.add_annotation(
                 text="aucune donnée disponible",
-                xref="paper",
-                yref="paper",
-                x=0.5,
-                y=0.5,
-                showarrow=False,
-            )
-            return fig
-
-        df = df.sort_values(by="x")
-        if df.empty:
-            fig = go.Figure()
-            fig.add_annotation(
-                text="pas de données valides",
                 xref="paper",
                 yref="paper",
                 x=0.5,
@@ -528,26 +516,36 @@ def _make_time_series(year=2023, agg_filter: int | str | None = None, unit: str 
         }
 
         fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=df["x"],
-                y=df["accidents"],
-                mode="lines+markers",
-                name="accidents",
-                line={"color": "#3ae7ff", "width": 4, "shape": "spline"},
-                marker={
-                    "size": 10,
-                    "color": "#3ae7ff",
-                    "symbol": "circle",
-                    "line": {"color": "#0e111b", "width": 1},
-                },
-                fill="tozeroy",
-                fillcolor="rgba(58, 231, 255, 0.15)",
-                hovertemplate=(
-                    "<b>%{x}</b><br>accidents: <b>%{y}</b><extra></extra>"
-                ),
+        palette = [
+            "#3ae7ff",  # cyan
+            "#ff57c2",  # pink
+            "#7b5cff",  # purple
+            "#01d084",  # green
+            "#f093fb",  # magenta soft
+        ]
+        for idx, (y, dfx) in enumerate(overlay_sets):
+            color = palette[idx % len(palette)]
+            fig.add_trace(
+                go.Scatter(
+                    x=dfx["x"],
+                    y=dfx["accidents"],
+                    mode="lines+markers",
+                    name=str(y),
+                    line={"color": color, "width": 3, "shape": "spline"},
+                    marker={
+                        "size": 8,
+                        "color": color,
+                        "symbol": "circle",
+                        "line": {"color": "#0e111b", "width": 1},
+                    },
+                    # area fill only for single series to avoid stacking confusion
+                    fill="tozeroy" if not show_leg else None,
+                    fillcolor=("rgba(58, 231, 255, 0.12)" if not show_leg else None),
+                    hovertemplate=(
+                        f"<b>année {y}</b><br>%{{x}} → <b>%{{y}}</b><extra></extra>"
+                    ),
+                )
             )
-        )
         fig.update_layout(
             title={
                 "text": title_map.get(unit, title_map["hour"]),
@@ -564,7 +562,8 @@ def _make_time_series(year=2023, agg_filter: int | str | None = None, unit: str 
             plot_bgcolor="#14192a",
             paper_bgcolor="#181d31",
             font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
-            showlegend=False,
+            showlegend=show_leg,
+            legend={"orientation": "h", "y": 1.05},
         )
         fig.update_xaxes(
             tickmode="linear",
@@ -1094,24 +1093,42 @@ authors_page = html.Div(
         html.H2("auteurs et crédits"),
         html.Div(
             [
-                html.P(
-                    "projet d’analyse d’accidentologie routière en france",
-                    style={"fontSize": "16px", "lineHeight": "1.8", "fontWeight": "500"},
+                html.Div(
+                    [
+                        html.H3("auteurs", style={"marginBottom": "8px"}),
+                        html.P(
+                            "Iris Carron et Cléo Detrez — Novembre 2025",
+                            style={"fontSize": "16px", "color": "var(--text-300)"},
+                        ),
+                        html.Hr(style={"margin": "16px 0", "borderColor": "var(--border)"}),
+                        html.H3("sources", style={"marginBottom": "8px"}),
+                        html.Ul(
+                            [
+                                html.Li(
+                                    html.A(
+                                        "Base accidents corporels (data.gouv.fr)",
+                                        href="https://www.data.gouv.fr/fr/datasets/base-de-donnees-accidents-corporels-de-la-circulation/",
+                                        target="_blank",
+                                        style={"color": "var(--accent-blue)"},
+                                    )
+                                ),
+                                html.Li(
+                                    html.A(
+                                        "Mesures radars automatiques (data.gouv.fr)",
+                                        href="https://www.data.gouv.fr/fr/datasets/radars/",
+                                        target="_blank",
+                                        style={"color": "var(--accent-pink)"},
+                                    )
+                                ),
+                            ],
+                            style={"marginLeft": "18px", "lineHeight": "1.9"},
+                        ),
+                    ]
                 ),
-                html.P("2025", style={"fontSize": "16px", "color": "#667eea", "fontWeight": "600"}),
-                html.Hr(style={"margin": "20px 0", "borderColor": "#ecf0f1"}),
-                html.P(
-                    "technologie",
-                    style={"fontSize": "15px", "fontWeight": "700", "color": "#2c3e50", "marginTop": "20px"},
-                ),
-                html.P("développé avec dash, plotly et sqlite", style={"fontSize": "14px", "color": "#7f8c8d"}),
-                html.P("données : data.gouv.fr", style={"fontSize": "14px", "color": "#7f8c8d", "marginTop": "15px"}),
             ],
+            className="page-card",
             style={
-                "backgroundColor": "white",
-                "padding": "28px",
-                "borderRadius": "12px",
-                "boxShadow": "0 4px 20px rgba(102, 126, 234, 0.12)",
+                "padding": "24px",
                 "borderTop": "4px solid #f093fb",
             },
         ),
