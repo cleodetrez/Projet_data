@@ -27,12 +27,14 @@ def load_csv_to_db(retries=3):
     all_files: dict[str, Path] = {}
     
     # Découvrir tous les fichiers caract_clean_YYYY.csv -> caracteristiques_YYYY
+    logger.info(f"Recherche fichiers nettoyés dans {CLEAN_DIR}...")
     for p in CLEAN_DIR.glob("caract_clean_*.csv"):
         m = re.search(r"(\d{4})", p.name)
         if not m:
             continue
         year = m.group(1)
         all_files[f"caracteristiques_{year}"] = p
+        logger.info(f"  → Trouvé: {p.name}")
     
     # Découvrir tous les fichiers radars_delta_clean_YYYY.csv -> radars_YYYY
     for p in CLEAN_DIR.glob("radars_delta_clean_*.csv"):
@@ -41,11 +43,13 @@ def load_csv_to_db(retries=3):
             continue
         year = m.group(1)
         all_files[f"radars_{year}"] = p
+        logger.info(f"  → Trouvé: {p.name}")
     
     if not all_files:
         logger.warning(f"Aucun fichier nettoyé trouvé dans {CLEAN_DIR}")
         return
     
+    logger.info(f"{len(all_files)} fichier(s) à charger:")
     for table_name, csv_path in sorted(all_files.items()):
         if not csv_path.exists():
             logger.warning(f"Fichier manquant : {csv_path}")
@@ -66,18 +70,13 @@ def load_csv_to_db(retries=3):
                 attempt += 1
                 if attempt < retries:
                     wait = 2 ** attempt
-                    logger.warning(f"⚠ Tentative {attempt}/{retries} échouée pour {table_name}, réessai dans {wait}s...")
+                    logger.warning(f"Tentative {attempt}/{retries} échouée pour {table_name}, réessai dans {wait}s...")
                     time.sleep(wait)
                 else:
-                    logger.error(f"❌ Erreur définitive pour {csv_path} : {e}")
+                    logger.error(f"Erreur définitive pour {csv_path} : {e}")
     
     engine.dispose()
-    logger.info(f"✓ Base de données mise à jour : {DATABASE_PATH}")
-
-if __name__ == "__main__":
-    load_csv_to_db()
-
-
+    logger.info(f"Base de données mise à jour : {DATABASE_PATH}")
 
 if __name__ == "__main__":
     load_csv_to_db()
