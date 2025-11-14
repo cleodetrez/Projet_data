@@ -17,7 +17,7 @@ def clean_radars():
 
     # --- Priorité à la colonne 'date' pour année/mois/jour/heure (HH:MM) ---
     if "date" in df.columns:
-        parsed_dt = pd.to_datetime(df["date"], dayfirst=True, errors="coerce", infer_datetime_format=True)
+        parsed_dt = pd.to_datetime(df["date"], dayfirst=True, errors="coerce")
         df["datetime"] = parsed_dt
 
         # remplir année/mois/jour/heure uniquement pour les lignes parsées
