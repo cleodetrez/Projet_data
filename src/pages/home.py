@@ -436,36 +436,53 @@ def _make_speed_histogram(year=2023):
         return fig
 
 
-def _make_accidents_by_day_line(year=2023, agg_filter: int | str | None = None):
-    """courbe : évolution du nombre d'accidents par heure.
+def _make_time_series(year=2023, agg_filter: int | str | None = None, unit: str = "hour"):
+    """courbe : évolution du nombre d'accidents par heure/jour/mois.
 
-    year: 2021 | 2023 | "all" pour agréger les deux années.
-    agg_filter: 1 (agglomération) | 2 (hors agglomération) | "all" | None.
+    unit: "hour" | "day" | "month"
+    year: 2021 | 2023 | "all" pour agréger plusieurs années.
+    agg_filter: 1 (agglomération) | 2 (hors agglomération) | None
     """
     try:
+        unit = unit or "hour"
+        unit = unit.lower()
+
         def _query_one(y: int) -> pd.DataFrame:
             table_name = f"caracteristiques_{y}"
-            where_parts = ["heure IS NOT NULL"]
-            params = {}
+            params: dict = {}
+            where_parts = []
+
+            if unit == "hour":
+                select_x = "CAST(SUBSTR(heure,1,2) AS INTEGER) AS x"
+                where_parts.append("heure IS NOT NULL")
+            elif unit == "day":
+                select_x = "CAST(jour AS INTEGER) AS x"
+                where_parts.append("jour IS NOT NULL")
+            else:  # month
+                select_x = "CAST(mois AS INTEGER) AS x"
+                where_parts.append("mois IS NOT NULL")
+
             if agg_filter in (1, 2):
                 where_parts.append("CAST(agg AS INTEGER) = :agg")
                 params["agg"] = agg_filter
-            where_clause = " AND ".join(where_parts)
+
+            where_clause = " AND ".join(where_parts) if where_parts else "1=1"
             sql = (
-                f"SELECT CAST(SUBSTR(heure,1,2) AS INTEGER) AS heure_num, "
-                f"COUNT(*) AS accidents "
-                f"FROM {table_name} "
-                f"WHERE {where_clause} "
-                f"GROUP BY heure_num "
-                f"ORDER BY heure_num"
+                f"SELECT {select_x}, COUNT(*) AS accidents "
+                f"FROM {table_name} WHERE {where_clause} "
+                f"GROUP BY x ORDER BY x"
             )
             return query_db(sql, params)
 
         if isinstance(year, str) and year == "all":
-            df1 = _query_one(2021)
-            df2 = _query_one(2023)
-            df = pd.concat([df1, df2], ignore_index=True)
-            df = df.groupby("heure_num", as_index=False).agg({"accidents": "sum"})
+            parts = [
+                _query_one(y) for y in _available_years()
+            ]
+            parts = [p for p in parts if p is not None and not p.empty]
+            if parts:
+                df = pd.concat(parts, ignore_index=True).groupby("x", as_index=False).agg({"accidents": "sum"})
+            else:
+                df = pd.DataFrame(columns=["x", "accidents"])  # empty
         else:
             df = _query_one(int(year))
 
@@ -481,7 +498,7 @@ def _make_accidents_by_day_line(year=2023, agg_filter: int | str | None = None):
             )
             return fig
 
-        df = df.sort_values(by="heure_num")
+        df = df.sort_values(by="x")
         if df.empty:
             fig = go.Figure()
             fig.add_annotation(
@@ -494,35 +511,51 @@ def _make_accidents_by_day_line(year=2023, agg_filter: int | str | None = None):
             )
             return fig
 
+        title_map = {
+            "hour": "évolution du nombre d'accidents par heure",
+            "day": "évolution du nombre d'accidents par jour",
+            "month": "évolution du nombre d'accidents par mois",
+        }
+        x_title_map = {
+            "hour": "heure (0-23)",
+            "day": "jour (1-31)",
+            "month": "mois (1-12)",
+        }
+        x_range_map = {
+            "hour": [-0.5, 23.5],
+            "day": [0.5, 31.5],
+            "month": [0.5, 12.5],
+        }
+
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=df["heure_num"],
+                x=df["x"],
                 y=df["accidents"],
                 mode="lines+markers",
                 name="accidents",
                 line={"color": "#3ae7ff", "width": 4, "shape": "spline"},
                 marker={
-                    "size": 12,
+                    "size": 10,
                     "color": "#3ae7ff",
                     "symbol": "circle",
-                    "line": {"color": "#0e111b", "width": 2},
+                    "line": {"color": "#0e111b", "width": 1},
                 },
                 fill="tozeroy",
                 fillcolor="rgba(58, 231, 255, 0.15)",
                 hovertemplate=(
-                    "<b>heure %{x:.0f}h</b><br>accidents: <b>%{y}</b><extra></extra>"
+                    "<b>%{x}</b><br>accidents: <b>%{y}</b><extra></extra>"
                 ),
             )
         )
         fig.update_layout(
             title={
-                "text": "évolution du nombre d'accidents par heure",
+                "text": title_map.get(unit, title_map["hour"]),
                 "x": 0.5,
                 "xanchor": "center",
-                "font": {"size": 18, "color": "#2c3e50", "family": "Arial, sans-serif"},
+                "font": {"size": 18, "color": "#e6e9f2", "family": "Arial, sans-serif"},
             },
-            xaxis_title="heure (0-23)",
+            xaxis_title=x_title_map.get(unit, x_title_map["hour"]),
             yaxis_title="nombre d'accidents",
             height=550,
             margin={"l": 80, "r": 60, "t": 100, "b": 80},
@@ -536,7 +569,7 @@ def _make_accidents_by_day_line(year=2023, agg_filter: int | str | None = None):
         fig.update_xaxes(
             tickmode="linear",
             dtick=1,
-            range=[-0.5, 23.5],
+            range=x_range_map.get(unit, x_range_map["hour"]),
             showgrid=True,
             gridwidth=1,
             gridcolor="rgba(200, 200, 200, 0.2)",
@@ -555,7 +588,7 @@ def _make_accidents_by_day_line(year=2023, agg_filter: int | str | None = None):
         return fig
 
     except Exception as err:  # type: ignore[used-before-def]
-        print(f"erreur courbe accidents/heure : {err}")
+        print(f"erreur courbe temporelle : {err}")
         fig = go.Figure()
         fig.add_annotation(
             text=f"erreur: {str(err)[:100]}",
@@ -908,275 +941,151 @@ graph_page = html.Div(
         html.H2("analyses temporelles — évolution des accidents"),
         html.Div(
             [
-                html.H3(
-                    "filtres",
-                    style={
-                        "fontSize": "16px",
-                        "fontWeight": "700",
-                        "color": "#2c3e50",
-                        "marginBottom": "16px",
-                        "borderBottom": "2px solid #6b5bd3",
-                        "paddingBottom": "12px",
-                    },
-                ),
+                # Sidebar filtres à gauche
                 html.Div(
                     [
-                        html.Div(
-                            [
-                                html.Label(
-                                    "sexe",
-                                    style={
-                                        "fontWeight": "600",
-                                        "fontSize": "13px",
-                                        "color": "#2c3e50",
-                                        "marginBottom": "6px",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="filter-sexe",
-                                    options=[
-                                        {"label": "tous", "value": "all"},
-                                        {"label": "homme", "value": "H"},
-                                        {"label": "femme", "value": "F"},
-                                    ],
-                                    value="all",
-                                    style={"width": "100%"},
-                                    clearable=False,
-                                ),
-                            ],
-                            style={"flex": "1", "minWidth": "150px", "marginRight": "16px"},
+                        html.H3(
+                            "filtres",
+                            style={
+                                "fontSize": "16px",
+                                "fontWeight": "700",
+                                "color": "#e6e9f2",
+                                "marginBottom": "16px",
+                                "borderBottom": "2px solid #6b5bd3",
+                                "paddingBottom": "12px",
+                            },
                         ),
-                        html.Div(
-                            [
-                                html.Label(
-                                    "année",
-                                    style={
-                                        "fontWeight": "600",
-                                        "fontSize": "13px",
-                                        "color": "#2c3e50",
-                                        "marginBottom": "6px",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="filter-annee",
-                                    options=(
-                                        [{"label": "toutes", "value": "all"}]
-                                        + [{"label": str(y), "value": y} for y in sorted(_available_years(), reverse=True)]
-                                    ),
-                                    value="all",
-                                    style={"width": "100%"},
-                                    clearable=False,
-                                ),
-                            ],
-                            style={"flex": "1", "minWidth": "150px", "marginRight": "16px"},
+                        html.Label("sexe", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.Dropdown(
+                            id="filter-sexe",
+                            options=[{"label": "tous", "value": "all"}, {"label": "homme", "value": "H"}, {"label": "femme", "value": "F"}],
+                            value="all",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
                         ),
-                        html.Div(
-                            [
-                                html.Label(
-                                    "luminosité",
-                                    style={
-                                        "fontWeight": "600",
-                                        "fontSize": "13px",
-                                        "color": "#2c3e50",
-                                        "marginBottom": "6px",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="filter-luminosite",
-                                    options=[
-                                        {"label": "toutes", "value": "all"},
-                                        {"label": "jour", "value": 1},
-                                        {"label": "crépuscule/aube", "value": 2},
-                                        {"label": "nuit", "value": 3},
-                                        {"label": "nuit sans éclairage", "value": 4},
-                                        {"label": "nuit avec éclairage", "value": 5},
-                                    ],
-                                    value="all",
-                                    style={"width": "100%"},
-                                    clearable=False,
-                                ),
-                            ],
-                            style={"flex": "1", "minWidth": "150px", "marginRight": "16px"},
+                        html.Label("année", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.Dropdown(
+                            id="filter-annee",
+                            options=([{"label": "toutes", "value": "all"}] + [{"label": str(y), "value": y} for y in sorted(_available_years(), reverse=True)]),
+                            value="all",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
                         ),
-                        html.Div(
-                            [
-                                html.Label(
-                                    "agglomération",
-                                    style={
-                                        "fontWeight": "600",
-                                        "fontSize": "13px",
-                                        "color": "#2c3e50",
-                                        "marginBottom": "6px",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="filter-agglomeration",
-                                    options=[
-                                        {"label": "tous", "value": "all"},
-                                        {"label": "agglomération", "value": 1},
-                                        {"label": "hors agglomération", "value": 2},
-                                    ],
-                                    value="all",
-                                    style={"width": "100%"},
-                                    clearable=False,
-                                ),
+                        html.Label("luminosité", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.Dropdown(
+                            id="filter-luminosite",
+                            options=[
+                                {"label": "toutes", "value": "all"},
+                                {"label": "jour", "value": 1},
+                                {"label": "crépuscule/aube", "value": 2},
+                                {"label": "nuit", "value": 3},
+                                {"label": "nuit sans éclairage", "value": 4},
+                                {"label": "nuit avec éclairage", "value": 5},
                             ],
-                            style={"flex": "1", "minWidth": "150px", "marginRight": "16px"},
+                            value="all",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
                         ),
-                        html.Div(
-                            [
-                                html.Label(
-                                    "département",
-                                    style={
-                                        "fontWeight": "600",
-                                        "fontSize": "13px",
-                                        "color": "#2c3e50",
-                                        "marginBottom": "6px",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="filter-departement",
-                                    options=[{"label": "tous", "value": "all"}],
-                                    value="all",
-                                    style={"width": "100%"},
-                                    clearable=False,
-                                    disabled=True,
-                                ),
-                            ],
-                            style={"flex": "1", "minWidth": "150px"},
+                        html.Label("agglomération", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.Dropdown(
+                            id="filter-agglomeration",
+                            options=[{"label": "tous", "value": "all"}, {"label": "agglomération", "value": 1}, {"label": "hors agglomération", "value": 2}],
+                            value="all",
+                            clearable=False,
                         ),
-                    ],
-                    style={
-                        "display": "flex",
-                        "gap": "16px",
-                        "flexWrap": "wrap",
-                        "alignItems": "flex-start",
-                    },
-                ),
-                html.Div(
-                    [
                         html.Button(
                             "réinitialiser filtres",
                             id="btn-reset-filters",
                             n_clicks=0,
                             style={
-                                "marginTop": "12px",
-                                "padding": "8px 16px",
-                                "backgroundColor": "#ecf0f1",
-                                "border": "1px solid #bdc3c7",
-                                "borderRadius": "4px",
+                                "marginTop": "16px",
+                                "padding": "10px 16px",
+                                "backgroundColor": "#1a2035",
+                                "border": "1px solid var(--border)",
+                                "borderRadius": "8px",
                                 "cursor": "pointer",
                                 "fontSize": "13px",
-                                "color": "#7f8c8d",
-                                "transition": "all 0.2s",
+                                "color": "#b9bfd3",
+                                "boxShadow": "0 6px 20px rgba(0,0,0,0.25)",
                             },
-                        )
-                    ],
-                    style={"marginTop": "12px"},
-                ),
-            ],
-            className="page-card",
-            style={"padding": "20px", "marginBottom": "28px"},
-        ),
-        html.Div(
-            [
-                html.Div(
-                    [
-                        html.H3(
-                            "courbe 1 — accidents par heure",
-                            style={
-                                "fontSize": "16px",
-                                "fontWeight": "600",
-                                "color": "#2c3e50",
-                                "marginBottom": "16px",
-                                "borderLeft": "4px solid #6b5bd3",
-                                "paddingLeft": "12px",
-                            },
-                        ),
-                        dcc.Graph(
-                            id="graph-accidents-heure",
-                            figure=_make_accidents_by_day_line(),
-                            config={"responsive": True, "displayModeBar": True},
                         ),
                     ],
                     className="page-card",
                     style={
-                        "padding": "28px",
-                        "borderTop": "4px solid #7b5cff",
-                        "width": "100%",
-                    },
-                )
-            ],
-            style={"marginBottom": "28px"},
-        ),
-        html.Div(
-            [
-                html.Div(
-                    [
-                        html.H3(
-                            "courbe 2 — distribution par agglomération",
-                            style={
-                                "fontSize": "16px",
-                                "fontWeight": "600",
-                                "color": "#2c3e50",
-                                "marginBottom": "16px",
-                                "borderLeft": "4px solid #f093fb",
-                                "paddingLeft": "12px",
-                            },
-                        ),
-                        dcc.Graph(
-                            id="graph-accidents-pie",
-                            figure=_make_accidents_pie_chart(),
-                            config={"responsive": True, "displayModeBar": True},
-                        ),
-                    ],
-                    className="page-card",
-                    style={
-                        "padding": "28px",
-                        "borderTop": "4px solid #ff57c2",
-                        "flex": "1",
-                        "minWidth": "45%",
+                        "width": "260px",
+                        "padding": "20px",
+                        "position": "sticky",
+                        "top": "100px",
+                        "alignSelf": "flex-start",
                     },
                 ),
+
+                # Contenu principal à droite
                 html.Div(
                     [
-                        html.H3(
-                            "courbe 3 — à venir",
-                            style={
-                                "fontSize": "16px",
-                                "fontWeight": "600",
-                                "color": "#999",
-                                "marginBottom": "16px",
-                                "borderLeft": "4px solid #bdc3c7",
-                                "paddingLeft": "12px",
-                            },
-                        ),
                         html.Div(
-                            "nouvelle courbe à implémenter...",
-                            style={
-                                "height": "420px",
-                                "display": "flex",
-                                "alignItems": "center",
-                                "justifyContent": "center",
-                                "color": "#bbb",
-                                "fontSize": "16px",
-                                "fontStyle": "italic",
-                            },
+                            [
+                                html.Div(
+                                    [
+                                        html.H3(
+                                            "courbe — accidents (heures/jours/mois)",
+                                            style={
+                                                "fontSize": "16px",
+                                                "fontWeight": "600",
+                                                "color": "#e6e9f2",
+                                                "marginBottom": "12px",
+                                                "borderLeft": "4px solid #6b5bd3",
+                                                "paddingLeft": "12px",
+                                            },
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Button("heures", id="btn-ts-hour", n_clicks=0, style={"padding": "8px 14px", "borderRadius": "8px", "border": "1px solid var(--border)", "backgroundColor": "#1a2035", "color": "#b9bfd3"}),
+                                                html.Button("jours", id="btn-ts-day", n_clicks=0, style={"padding": "8px 14px", "borderRadius": "8px", "border": "1px solid var(--border)", "backgroundColor": "#1a2035", "color": "#b9bfd3", "marginLeft": "8px"}),
+                                                html.Button("mois", id="btn-ts-month", n_clicks=0, style={"padding": "8px 14px", "borderRadius": "8px", "border": "1px solid var(--border)", "backgroundColor": "#1a2035", "color": "#b9bfd3", "marginLeft": "8px"}),
+                                            ],
+                                            style={"display": "flex", "justifyContent": "flex-start", "marginBottom": "12px"},
+                                        ),
+                                    ]
+                                ),
+                                dcc.Graph(
+                                    id="graph-accidents-heure",
+                                    figure=_make_time_series(),
+                                    config={"responsive": True, "displayModeBar": True},
+                                ),
+                            ],
+                            className="page-card",
+                            style={"padding": "20px", "borderTop": "4px solid #7b5cff"},
+                        ),
+
+                        html.Div(
+                            [
+                                html.H3(
+                                    "courbe 2 — distribution par agglomération",
+                                    style={
+                                        "fontSize": "16px",
+                                        "fontWeight": "600",
+                                        "color": "#e6e9f2",
+                                        "marginBottom": "16px",
+                                        "borderLeft": "4px solid #f093fb",
+                                        "paddingLeft": "12px",
+                                    },
+                                ),
+                                dcc.Graph(
+                                    id="graph-accidents-pie",
+                                    figure=_make_accidents_pie_chart(),
+                                    config={"responsive": True, "displayModeBar": True},
+                                ),
+                            ],
+                            className="page-card",
+                            style={"padding": "20px", "borderTop": "4px solid #ff57c2", "marginTop": "24px"},
                         ),
                     ],
-                    className="page-card",
-                    style={
-                        "padding": "28px",
-                        "borderTop": "4px solid #2b3150",
-                        "border": "2px dashed var(--border)",
-                        "flex": "1",
-                        "minWidth": "45%",
-                    },
+                    style={"flex": "1", "minWidth": "0"},
                 ),
             ],
-            style={"display": "flex", "gap": "24px", "flexWrap": "wrap", "width": "100%"},
+            style={"display": "flex", "gap": "24px"},
         ),
-        html.Div(style={"marginTop": "40px"}),
     ]
 )
 
@@ -1378,13 +1287,20 @@ def update_histogram_year(*_args):
 
 @callback(
     [Output("graph-accidents-heure", "figure"), Output("graph-accidents-pie", "figure")],
-    [Input("filter-annee", "value"), Input("filter-agglomeration", "value")],
+    [
+        Input("filter-annee", "value"),
+        Input("filter-agglomeration", "value"),
+        Input("btn-ts-hour", "n_clicks"),
+        Input("btn-ts-day", "n_clicks"),
+        Input("btn-ts-month", "n_clicks"),
+    ],
 )
-def update_graph_page_charts(annee, agg_value):
-    """met à jour les graphiques selon l'année et l'agglomération."""
-    year = annee  # peut être 2021, 2023 ou "all"
+def update_graph_page_charts(annee, agg_value, _n_h, _n_d, _n_m):
+    """met à jour la courbe temporelle (heures/jours/mois) et le camembert."""
+    ctx = dash.callback_context
+    year = annee
 
-    # normaliser la valeur d'agglomération (peut arriver sous forme de chaîne)
+    # normaliser l'agglo
     if agg_value in (1, 2):
         agg_filter = agg_value
     elif isinstance(agg_value, str) and agg_value in ("1", "2"):
@@ -1392,7 +1308,16 @@ def update_graph_page_charts(annee, agg_value):
     else:
         agg_filter = None
 
+    # déterminer l'unité depuis le bouton cliqué
+    unit = "hour"
+    if ctx.triggered:
+        btn = ctx.triggered[0]["prop_id"].split(".")[0]
+        if btn == "btn-ts-day":
+            unit = "day"
+        elif btn == "btn-ts-month":
+            unit = "month"
+
     return (
-        _make_accidents_by_day_line(year, agg_filter=agg_filter),
+        _make_time_series(year, agg_filter=agg_filter, unit=unit),
         _make_accidents_pie_chart(year, agg_filter=agg_filter),
     )

@@ -128,14 +128,55 @@ button {
     transition: all 0.25s ease;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: var(--text-100);
+    background-color: var(--bg-800);
+    border: 1px solid var(--border);
 }
 
 button:hover {
     transform: translateY(-2px);
+    border-color: var(--accent-blue);
 }
 
 button:active {
     transform: translateY(0);
+}
+
+/* ===== DCC DROPDOWN (react-select v1) ===== */
+.Select-control {
+    background-color: var(--bg-800) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-100) !important;
+}
+.Select--single > .Select-control .Select-value,
+.Select-placeholder {
+    color: var(--text-300) !important;
+}
+.Select-input > input {
+    color: var(--text-100) !important;
+}
+.Select-menu-outer {
+    background-color: var(--card-800) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.35) !important;
+}
+.Select-menu {
+    background-color: var(--card-800) !important;
+}
+.Select-option {
+    background-color: transparent !important;
+    color: var(--text-100) !important;
+}
+.Select-option.is-focused {
+    background-color: rgba(123, 92, 255, 0.18) !important;
+}
+.Select-option.is-selected,
+.Select-option.is-focused.is-selected {
+    background-color: var(--accent-blue) !important;
+    color: #0e111b !important;
+}
+.Select.is-open > .Select-control {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0.35rem rgba(58, 231, 255, 0.35) !important;
 }
 
 /* ===== GRAPHS & PLOTLY ===== */
