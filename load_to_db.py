@@ -6,6 +6,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 import logging
 import re
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,12 +17,12 @@ DB_DIR = ROOT / "bdd"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 
 DATABASE_PATH = DB_DIR / "database.db"
-DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
+DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}?timeout=30"
 
-def load_csv_to_db():
+def load_csv_to_db(retries=3):
     """Charge dynamiquement les fichiers CSV nettoyés (toutes années) dans SQLite."""
     
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(DATABASE_URL, connect_args={"timeout": 30})
     
     all_files: dict[str, Path] = {}
     
@@ -50,18 +51,33 @@ def load_csv_to_db():
             logger.warning(f"Fichier manquant : {csv_path}")
             continue
         
-        try:
-            logger.info(f"Chargement de {csv_path.name} → table '{table_name}'...")
-            df = pd.read_csv(csv_path, low_memory=False)
+        attempt = 0
+        while attempt < retries:
+            try:
+                logger.info(f"Chargement de {csv_path.name} → table '{table_name}'...")
+                df = pd.read_csv(csv_path, low_memory=False)
+                
+                # Insérer dans la DB (remplace la table)
+                df.to_sql(table_name, engine, if_exists="replace", index=False)
+                logger.info(f"✓ {len(df)} lignes insérées dans '{table_name}'")
+                break
             
-            # Insérer dans la DB (remplace la table)
-            df.to_sql(table_name, engine, if_exists="replace", index=False)
-            logger.info(f"✓ {len(df)} lignes insérées dans '{table_name}'")
-        
-        except Exception as e:
-            logger.error(f"Erreur lors du chargement de {csv_path} : {e}")
+            except Exception as e:
+                attempt += 1
+                if attempt < retries:
+                    wait = 2 ** attempt
+                    logger.warning(f"⚠ Tentative {attempt}/{retries} échouée pour {table_name}, réessai dans {wait}s...")
+                    time.sleep(wait)
+                else:
+                    logger.error(f"❌ Erreur définitive pour {csv_path} : {e}")
     
+    engine.dispose()
     logger.info(f"✓ Base de données mise à jour : {DATABASE_PATH}")
+
+if __name__ == "__main__":
+    load_csv_to_db()
+
+
 
 if __name__ == "__main__":
     load_csv_to_db()
