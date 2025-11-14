@@ -899,7 +899,13 @@ def create_choropleth_page(carte_mode="dept", year=2023):
     )
 
 
-choropleth_page = create_choropleth_page("dept")
+try:
+    choropleth_page = create_choropleth_page("dept")
+except Exception:
+    choropleth_page = html.Div(
+        html.P("Données en chargement... Rafraîchissez la page dans quelques secondes."),
+        style={"padding": "40px", "textAlign": "center", "color": "#999", "fontSize": "16px"}
+    )
 
 graph_page = html.Div(
     [
