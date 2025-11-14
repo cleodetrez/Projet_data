@@ -20,16 +20,28 @@ ROOT = Path(__file__).resolve().parent
 
 def setup_data():
     """Télécharge, nettoie et charge tout dans la DB."""
-    logger.info("Initialisation des données...")
+    logger.info(" Initialisation des données...")
     
     try:
         # Imports locaux
+        from src.utils.get_data import (
+            get_caract_2020, get_caract_2021, get_caract_2022, 
+            get_caract_2023, get_caract_2024
+        )
         from src.utils.clean_caract_2020 import clean_caracteristiques as clean_2020
         from src.utils.clean_caract_2021 import clean_caracteristiques as clean_2021
         from src.utils.clean_caract_2022 import clean_caracteristiques as clean_2022
         from src.utils.clean_caract_2023 import clean_caracteristiques as clean_2023
         from src.utils.clean_caract_2024 import clean_caracteristiques as clean_2024
         from load_to_db import load_csv_to_db
+        
+        getters = {
+            2020: get_caract_2020,
+            2021: get_caract_2021,
+            2022: get_caract_2022,
+            2023: get_caract_2023,
+            2024: get_caract_2024,
+        }
         
         cleaners = {
             2020: clean_2020,
@@ -39,17 +51,30 @@ def setup_data():
             2024: clean_2024,
         }
         
-        # Nettoyer par année
-        for year, cleaner in cleaners.items():
+        # Télécharger et nettoyer par année
+        for year in cleaners.keys():
             cleaned_path = ROOT / "data" / "cleaned" / f"caract_clean_{year}.csv"
+            raw_path = ROOT / "data" / "raw" / f"caracteristiques-{year}.csv"
+            
             if cleaned_path.exists():
                 logger.info(f"✓ caract_clean_{year}.csv existe déjà")
-            else:
-                logger.info(f"🧹 Nettoyage {year}...")
+                continue
+            
+            if not raw_path.exists():
+                logger.info(f"Téléchargement caracteristiques-{year}.csv...")
                 try:
-                    cleaner()
+                    getters[year]()
+                    logger.info(f"✓ Téléchargement {year} terminé")
                 except Exception as e:
-                    logger.warning(f"Erreur nettoyage {year}: {e}")
+                    logger.error(f"Erreur téléchargement {year}: {e}")
+                    continue
+            
+            logger.info(f"Nettoyage {year}...")
+            try:
+                cleaners[year]()
+                logger.info(f"✓ Nettoyage {year} terminé")
+            except Exception as e:
+                logger.error(f" Erreur nettoyage {year}: {e}")
         
         # Charger tout dans la DB
         logger.info("Chargement en base de données...")
@@ -58,6 +83,8 @@ def setup_data():
         
     except Exception as e:
         logger.error(f"Erreur setup données: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 
