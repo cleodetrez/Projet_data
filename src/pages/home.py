@@ -68,6 +68,45 @@ def _available_radar_years() -> list[int]:
         return [2023, 2021]
 
 
+def _compute_radar_delta_bounds() -> tuple[float, float]:
+    """Calcule une plage x commune (symétrique autour de 0) pour les histogrammes.
+
+    Objectif: conserver la même position de 0 lors du changement d'année.
+    """
+    try:
+        years = _available_radar_years()
+        mins: list[float] = []
+        maxs: list[float] = []
+        for y in years:
+            table = f"radars_{y}"
+            sql = (
+                f"SELECT MIN(mesure - limite) AS min_d, MAX(mesure - limite) AS max_d "
+                f"FROM {table} WHERE mesure IS NOT NULL AND limite IS NOT NULL"
+            )
+            df = query_db(sql)
+            if df is not None and not df.empty:
+                min_d = df.iloc[0].get("min_d")
+                max_d = df.iloc[0].get("max_d")
+                if pd.notna(min_d):
+                    mins.append(float(min_d))
+                if pd.notna(max_d):
+                    maxs.append(float(max_d))
+
+        if mins and maxs:
+            lo = min(mins)
+            hi = max(maxs)
+            max_abs = max(abs(lo), abs(hi))
+            # borne de sécurité pour éviter des outliers extrêmes
+            max_abs = float(min(max_abs, 120.0))
+            # arrondir à la dizaine supérieure pour plus de stabilité visuelle
+            max_abs = float((int(max_abs + 9) // 10) * 10)
+            max_abs = max(20.0, max_abs)
+            return (-max_abs, max_abs)
+        return (-60.0, 60.0)
+    except Exception:
+        return (-60.0, 60.0)
+
+
 # ============================================================================
 # composants des pages
 # ============================================================================
@@ -209,6 +248,8 @@ def _make_communes_choropleth(year=2023):
             hover_name="code_commune",
         )
         fig.update_geos(fitbounds="locations", visible=False)
+        # enlever les contours des communes pour n'afficher que les couleurs
+        fig.update_traces(marker_line_width=0, marker_line_color="rgba(0,0,0,0)")
         fig.update_layout(
             height=600,
             margin={"l": 0, "r": 0, "t": 40, "b": 0},
@@ -291,6 +332,18 @@ def _make_speed_histogram(year=2023):
 
         df["categorie"] = df["delta_v"].apply(categorize_delta_v)
 
+        # plage x symétrique autour de 0 calculée rapidement depuis le dataframe courant
+        try:
+            min_v = float(df["delta_v"].min())
+            max_v = float(df["delta_v"].max())
+            max_abs = max(abs(min_v), abs(max_v))
+            max_abs = min(max_abs, 120.0)
+            max_abs = float((int(max_abs + 9) // 10) * 10)  # arrondi dizaine sup
+            max_abs = max(20.0, max_abs)
+            x_lo, x_hi = -max_abs, max_abs
+        except Exception:
+            x_lo, x_hi = -60.0, 60.0
+
         fig = px.histogram(
             df,
             x="delta_v",
@@ -314,12 +367,8 @@ def _make_speed_histogram(year=2023):
             annotation_font_size=12,
             annotation_font_color="#f093fb",
         )
-        fig.add_vrect(
-            x0=-60, x1=0, fillcolor="#01d084", opacity=0.05, layer="below", line_width=0
-        )
-        fig.add_vrect(
-            x0=0, x1=60, fillcolor="#ff6b6b", opacity=0.05, layer="below", line_width=0
-        )
+        fig.add_vrect(x0=x_lo, x1=0, fillcolor="#01d084", opacity=0.05, layer="below", line_width=0)
+        fig.add_vrect(x0=0, x1=x_hi, fillcolor="#ff6b6b", opacity=0.05, layer="below", line_width=0)
 
         fig.update_layout(
             height=550,
@@ -365,6 +414,7 @@ def _make_speed_histogram(year=2023):
             zeroline=True,
             zerolinewidth=2,
             zerolinecolor="rgba(255, 87, 194, 0.35)",
+            range=[x_lo, x_hi],
         )
         fig.update_yaxes(
             showgrid=True, gridwidth=1, gridcolor="rgba(255, 255, 255, 0.06)"
@@ -660,25 +710,30 @@ about_page = html.Div(
 
 
 def create_histogram_page(year=2023):
-    """crée la page histogramme avec sélection d’année."""
+    """crée la page histogramme avec sélection d’année (barre à gauche)."""
     fig = _make_speed_histogram(year)
 
-    active_btn = {
-        "padding": "12px 24px",
-        "margin": "8px 0",
-        "fontSize": "15px",
-        "fontWeight": "600",
+    base_btn = {
+        "padding": "12px 16px",
+        "fontSize": "14px",
+        "fontWeight": "700",
         "cursor": "pointer",
-        "border": "1px solid transparent",
-        "borderRadius": "6px",
-        "backgroundColor": "transparent",
-        "color": "var(--text-100)",
-        "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
+        "borderRadius": "10px",
+        "border": "1px solid var(--border)",
+        "backgroundColor": "#1a2035",
+        "color": "#b9bfd3",
+        "textAlign": "center",
+        "boxShadow": "0 6px 20px rgba(0,0,0,0.25)",
+        "margin": "6px 0",
     }
-    inactive_btn = dict(active_btn)
-
-    style_2023 = active_btn if year == 2023 else inactive_btn
-    style_2021 = active_btn if year == 2021 else inactive_btn
+    active_btn = {
+        **base_btn,
+        "backgroundColor": "#3ae7ff",
+        "color": "#0e111b",
+        "border": "1px solid rgba(58,231,255,0.9)",
+        "boxShadow": "0 0 10px rgba(58,231,255,0.55)",
+    }
+    inactive_btn = base_btn
 
     radar_years = sorted(_available_radar_years(), reverse=True)
     year_buttons = [
@@ -698,6 +753,32 @@ def create_histogram_page(year=2023):
                 [
                     html.Div(
                         [
+                            html.Div(
+                                "année",
+                                style={
+                                    "fontSize": "12px",
+                                    "color": "var(--text-300)",
+                                    "marginBottom": "8px",
+                                },
+                            ),
+                            *year_buttons,
+                            html.Hr(style={"margin": "16px 0"}),
+                        ],
+                        className="page-card",
+                        style={
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "justifyContent": "flex-start",
+                            "width": "200px",
+                            "marginRight": "24px",
+                            "padding": "20px 16px",
+                            "position": "sticky",
+                            "top": "100px",
+                            "alignSelf": "flex-start",
+                        },
+                    ),
+                    html.Div(
+                        [
                             dcc.Graph(
                                 figure=fig,
                                 config={"responsive": True, "displayModeBar": True},
@@ -708,41 +789,6 @@ def create_histogram_page(year=2023):
                             "padding": "28px",
                             "flex": "1",
                             "minWidth": "0",
-                        },
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                "année",
-                                style={
-                                    "fontSize": "15px",
-                                    "fontWeight": "700",
-                                    "color": "#2c3e50",
-                                    "marginBottom": "20px",
-                                    "textAlign": "center",
-                                    "letterSpacing": "0.5px",
-                                },
-                            ),
-                            *year_buttons,
-                            html.Hr(style={"margin": "20px 0"}),
-                            html.Div(
-                                "sélectionnez l’année",
-                                style={
-                                    "fontSize": "12px",
-                                    "color": "#bbb",
-                                    "textAlign": "center",
-                                    "fontStyle": "italic",
-                                },
-                            ),
-                        ],
-                        className="page-card",
-                        style={
-                            "display": "flex",
-                            "flexDirection": "column",
-                            "justifyContent": "flex-start",
-                            "width": "160px",
-                            "marginLeft": "24px",
-                            "padding": "28px 20px",
                         },
                     ),
                 ],

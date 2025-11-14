@@ -117,14 +117,14 @@ for idx, feature in enumerate(geojson_data["features"]):
 
         # créer le geojson avec style (sans popup pour plus de vitesse)
         folium.GeoJson(
-            data=feature,
-            style_function=lambda _x, c=color: {
-                "fillColor": c,
-                "color": "#333333",
-                "weight": 0.5,
-                "fillOpacity": 0.8,
-            },
-            tooltip=f"<b>{com_name}</b><br/>code: {com_code}<br/>accidents: {n_acc}",
+          data=feature,
+          style_function=lambda _x, c=color: {
+            "fillColor": c,
+            "color": "#00000000",  # pas de contour
+            "weight": 0,
+            "fillOpacity": 0.85,
+          },
+          tooltip=f"<b>{com_name}</b><br/>code: {com_code}<br/>accidents: {n_acc}",
         ).add_to(m)
 
         matched_count += 1
