@@ -21,6 +21,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 ROOT = Path(__file__).resolve().parents[2]
 GEOJSON_PATH = ROOT / "departements-version-simplifiee.geojson"
 COMMUNES_GEOJSON_PATH = ROOT / "communes.geojson"
+REGIONS_GEOJSON_PATH = ROOT / "regions-version-simplifiee.geojson"
 
 # import absolu avec repli pour le lint
 try:
@@ -28,6 +29,91 @@ try:
 except ImportError:  # pragma: no cover
     def query_db(*_args, **_kwargs):
         raise ImportError("src.utils.get_data introuvable")
+
+# mapping département -> région (codes régions 2016)
+DEPT_TO_REGION: dict[str, str] = {
+    # Auvergne-Rhône-Alpes (84)
+    "01": "84", "03": "84", "07": "84", "15": "84", "26": "84", "38": "84",
+    "42": "84", "43": "84", "63": "84", "69": "84", "73": "84", "74": "84",
+    # Bourgogne-Franche-Comté (27)
+    "21": "27", "25": "27", "39": "27", "58": "27", "70": "27", "71": "27", "89": "27", "90": "27",
+    # Bretagne (53)
+    "22": "53", "29": "53", "35": "53", "56": "53",
+    # Centre-Val de Loire (24)
+    "18": "24", "28": "24", "36": "24", "37": "24", "41": "24", "45": "24",
+    # Corse (94)
+    "2A": "94", "2B": "94",
+    # Grand Est (44)
+    "08": "44", "10": "44", "51": "44", "52": "44", "54": "44", "55": "44", "57": "44", "67": "44", "68": "44", "88": "44",
+    # Hauts-de-France (32)
+    "02": "32", "59": "32", "60": "32", "62": "32", "80": "32",
+    # Île-de-France (11)
+    "75": "11", "77": "11", "78": "11", "91": "11", "92": "11", "93": "11", "94": "11", "95": "11",
+    # Normandie (28)
+    "14": "28", "27": "28", "50": "28", "61": "28", "76": "28",
+    # Nouvelle-Aquitaine (75)
+    "16": "75", "17": "75", "19": "75", "23": "75", "24": "75", "33": "75", "40": "75", "47": "75", "64": "75", "79": "75", "86": "75", "87": "75",
+    # Occitanie (76)
+    "09": "76", "11": "76", "12": "76", "30": "76", "31": "76", "32": "76", "34": "76", "46": "76", "48": "76", "65": "76", "66": "76", "81": "76", "82": "76",
+    # Pays de la Loire (52)
+    "44": "52", "49": "52", "53": "52", "72": "52", "85": "52",
+    # Provence-Alpes-Côte d'Azur (93)
+    "04": "93", "05": "93", "06": "93", "13": "93", "83": "93", "84": "93",
+    # Outre-mer
+    "971": "01", "972": "02", "973": "03", "974": "04", "976": "06",
+}
+
+# noms des régions (codes 2016)
+REGION_NAMES: dict[str, str] = {
+    "84": "Auvergne-Rhône-Alpes",
+    "27": "Bourgogne-Franche-Comté",
+    "53": "Bretagne",
+    "24": "Centre-Val de Loire",
+    "94": "Corse",
+    "44": "Grand Est",
+    "32": "Hauts-de-France",
+    "11": "Île-de-France",
+    "28": "Normandie",
+    "75": "Nouvelle-Aquitaine",
+    "76": "Occitanie",
+    "52": "Pays de la Loire",
+    "93": "Provence-Alpes-Côte d'Azur",
+    "01": "Guadeloupe",
+    "02": "Martinique",
+    "03": "Guyane",
+    "04": "La Réunion",
+    "06": "Mayotte",
+}
+
+# noms des départements
+DEPT_NAMES: dict[str, str] = {
+    "01": "Ain", "02": "Aisne", "03": "Allier", "04": "Alpes-de-Haute-Provence",
+    "05": "Hautes-Alpes", "06": "Alpes-Maritimes", "07": "Ardèche", "08": "Ardennes",
+    "09": "Ariège", "10": "Aube", "11": "Aude", "12": "Aveyron",
+    "13": "Bouches-du-Rhône", "14": "Calvados", "15": "Cantal", "16": "Charente",
+    "17": "Charente-Maritime", "18": "Cher", "19": "Corrèze", "21": "Côte-d'Or",
+    "22": "Côtes-d'Armor", "23": "Creuse", "24": "Dordogne", "25": "Doubs",
+    "26": "Drôme", "27": "Eure", "28": "Eure-et-Loir", "29": "Finistère",
+    "2A": "Corse-du-Sud", "2B": "Haute-Corse", "30": "Gard", "31": "Haute-Garonne",
+    "32": "Gers", "33": "Gironde", "34": "Hérault", "35": "Ille-et-Vilaine",
+    "36": "Indre", "37": "Indre-et-Loire", "38": "Isère", "39": "Jura",
+    "40": "Landes", "41": "Loir-et-Cher", "42": "Loire", "43": "Haute-Loire",
+    "44": "Loire-Atlantique", "45": "Loiret", "46": "Lot", "47": "Lot-et-Garonne",
+    "48": "Lozère", "49": "Maine-et-Loire", "50": "Manche", "51": "Marne",
+    "52": "Haute-Marne", "53": "Mayenne", "54": "Meurthe-et-Moselle", "55": "Meuse",
+    "56": "Morbihan", "57": "Moselle", "58": "Nièvre", "59": "Nord",
+    "60": "Oise", "61": "Orne", "62": "Pas-de-Calais", "63": "Puy-de-Dôme",
+    "64": "Pyrénées-Atlantiques", "65": "Hautes-Pyrénées", "66": "Pyrénées-Orientales",
+    "67": "Bas-Rhin", "68": "Haut-Rhin", "69": "Rhône", "70": "Haute-Saône",
+    "71": "Saône-et-Loire", "72": "Sarthe", "73": "Savoie", "74": "Haute-Savoie",
+    "75": "Paris", "76": "Seine-Maritime", "77": "Seine-et-Marne", "78": "Yvelines",
+    "79": "Deux-Sèvres", "80": "Somme", "81": "Tarn", "82": "Tarn-et-Garonne",
+    "83": "Var", "84": "Vaucluse", "85": "Vendée", "86": "Vienne",
+    "87": "Haute-Vienne", "88": "Vosges", "89": "Yonne", "90": "Territoire de Belfort",
+    "91": "Essonne", "92": "Hauts-de-Seine", "93": "Seine-Saint-Denis", "94": "Val-de-Marne",
+    "95": "Val-d'Oise", "971": "Guadeloupe", "972": "Martinique", "973": "Guyane",
+    "974": "La Réunion", "976": "Mayotte",
+}
 
 
 # ============================================================================
@@ -137,6 +223,7 @@ def _make_departments_choropleth(year=2023):
             return fig
 
         df["dept"] = df["dept"].astype(str).str.zfill(2)
+        df["nom"] = df["dept"].map(DEPT_NAMES).fillna(df["dept"])
 
         fig = px.choropleth(
             df,
@@ -147,7 +234,8 @@ def _make_departments_choropleth(year=2023):
             projection="mercator",
             color_continuous_scale=[[0, "#1a2035"], [0.5, "#3ae7ff"], [1, "#ff57c2"]],
             title="ACCIDENTOLOGIE PAR DÉPARTEMENT (FRANCE)",
-            hover_name="dept",
+            hover_name="nom",
+            hover_data={"dept": True, "accidents": True, "nom": False},
         )
         fig.update_geos(fitbounds="locations", visible=False)
         fig.update_layout(
@@ -259,7 +347,6 @@ def _make_communes_choropleth(year=2023):
             font={"color": "#e6e9f2"},
         )
         return fig
-
     except (OSError, json.JSONDecodeError, ValueError) as err:
         print(f"erreur carte communes : {err}")
         fig = go.Figure()
@@ -272,6 +359,69 @@ def _make_communes_choropleth(year=2023):
             showarrow=False,
         )
         return fig
+def _make_regions_choropleth(year=2023):
+    """carte choroplèthe par région (agrégation par code région 2016)."""
+    try:
+        if not REGIONS_GEOJSON_PATH.exists():
+            fig = go.Figure()
+            fig.add_annotation(text="fichier regions geojson manquant", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+            return fig
+
+        with REGIONS_GEOJSON_PATH.open("r", encoding="utf-8") as f:
+            geojson = json.load(f)
+
+        table_name = f"caracteristiques_{year}"
+        sql = (
+            f"SELECT dep AS dept, COUNT(*) AS accidents FROM {table_name} GROUP BY dep"
+        )
+        df = query_db(sql)
+
+        if df is None or df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="aucune donnée disponible", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+            return fig
+
+        df["dept"] = df["dept"].astype(str).str.strip().str.upper().str.zfill(2)
+        # préserver 971..976
+        df.loc[df["dept"].str.len() == 3, "dept"] = df.loc[df["dept"].str.len() == 3, "dept"]
+
+        def _map_region(dep: str) -> str | None:
+            return DEPT_TO_REGION.get(dep)
+
+        df["region"] = df["dept"].apply(_map_region)
+        df = df.dropna(subset=["region"]).groupby("region", as_index=False).agg({"accidents": "sum"})
+        df["nom"] = df["region"].map(REGION_NAMES).fillna(df["region"])
+
+        fig = px.choropleth(
+            df,
+            geojson=geojson,
+            locations="region",
+            color="accidents",
+            featureidkey="properties.code",
+            projection="mercator",
+            color_continuous_scale=[[0, "#1a2035"], [0.5, "#3ae7ff"], [1, "#ff57c2"]],
+            title="ACCIDENTOLOGIE PAR RÉGION (FRANCE)",
+            hover_name="nom",
+            hover_data={"region": True, "accidents": True, "nom": False},
+        )
+        fig.update_geos(fitbounds="locations", visible=False)
+        fig.update_traces(marker_line_width=0, marker_line_color="rgba(0,0,0,0)")
+        fig.update_layout(
+            height=600,
+            margin={"l": 0, "r": 0, "t": 40, "b": 0},
+            template="plotly_dark",
+            paper_bgcolor="#181d31",
+            plot_bgcolor="#14192a",
+            font={"color": "#e6e9f2"},
+        )
+        return fig
+    except Exception as err:
+        print(f"erreur carte régions : {err}")
+        fig = go.Figure()
+        fig.add_annotation(text=f"erreur : {str(err)[:100]}", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        return fig
+
+    
 
 
 def _make_speed_histogram(year=2023):
@@ -836,7 +986,12 @@ histogram_page = create_histogram_page()
 def create_choropleth_page(carte_mode="dept", year=2023):
     """crée la page choroplèthe avec une barre latérale à gauche."""
     # figure selon le mode
-    fig = _make_communes_choropleth(year) if carte_mode == "commune" else _make_departments_choropleth(year)
+    if carte_mode == "commune":
+        fig = _make_communes_choropleth(year)
+    elif carte_mode == "region":
+        fig = _make_regions_choropleth(year)
+    else:
+        fig = _make_departments_choropleth(year)
 
     # palette et styles boutons (dark + néon)
     base_btn = {
@@ -850,6 +1005,13 @@ def create_choropleth_page(carte_mode="dept", year=2023):
         "color": "#b9bfd3",
         "textAlign": "center",
         "boxShadow": "0 6px 20px rgba(0,0,0,0.25)",
+    }
+    region_active = {
+        **base_btn,
+        "backgroundColor": "#3ae7ff",
+        "color": "#0e111b",
+        "boxShadow": "0 0 10px rgba(58,231,255,0.6)",
+        "border": "1px solid rgba(58,231,255,0.85)",
     }
     dept_active = {
         **base_btn,
@@ -865,6 +1027,7 @@ def create_choropleth_page(carte_mode="dept", year=2023):
         "boxShadow": "0 0 10px rgba(255,87,194,0.6)",
         "border": "1px solid rgba(255,87,194,0.8)",
     }
+    region_style = region_active if carte_mode == "region" else base_btn
     dept_style = dept_active if carte_mode == "dept" else base_btn
     commune_style = commune_active if carte_mode == "commune" else base_btn
 
@@ -896,6 +1059,7 @@ def create_choropleth_page(carte_mode="dept", year=2023):
                     html.Div(
                         [
                             html.Div("vue", style={"fontSize": "12px", "color": "var(--text-300)", "marginBottom": "6px"}),
+                            html.Button("vue par région", id="btn-carte-region", n_clicks=0, style=region_style),
                             html.Button("vue par département", id="btn-carte-dept", n_clicks=0, style=dept_style),
                             html.Button("vue par commune", id="btn-carte-commune", n_clicks=0, style=commune_style),
                             html.Hr(style={"margin": "16px 0"}),
@@ -1254,6 +1418,7 @@ def display_page(_about_clicks, _hist_clicks, _chor_clicks, _graph_clicks, _auth
 @callback(
     Output("page-content", "children", allow_duplicate=True),
     [
+        Input("btn-carte-region", "n_clicks"),
         Input("btn-carte-dept", "n_clicks"),
         Input("btn-carte-commune", "n_clicks"),
         *[Input(f"btn-carte-year-{y}", "n_clicks") for y in _available_years()],
@@ -1270,8 +1435,8 @@ def update_carte_view(*_args):
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
     
     # Déterminer le mode (dept ou commune)
-    if button_id in ["btn-carte-dept", "btn-carte-commune"]:
-        mode = "commune" if button_id == "btn-carte-commune" else "dept"
+    if button_id in ["btn-carte-region", "btn-carte-dept", "btn-carte-commune"]:
+        mode = "region" if button_id == "btn-carte-region" else ("commune" if button_id == "btn-carte-commune" else "dept")
         default_year = _available_years()[-1] if _available_years() else 2023
         return create_choropleth_page(mode, default_year)
     
