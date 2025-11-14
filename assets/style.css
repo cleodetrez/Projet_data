@@ -1,3 +1,16 @@
+/* ===== THEME VARIABLES ===== */
+:root {
+    --bg-900: #0e111b;   /* deep blue/gray, not pure black */
+    --bg-800: #14192a;
+    --card-800: #181d31;
+    --text-100: #e6e9f2;
+    --text-300: #b9bfd3;
+    --border: #2b3150;
+    --accent-blue: #3ae7ff;   /* neon blue */
+    --accent-pink: #ff57c2;   /* neon pink */
+    --accent-purple: #7b5cff; /* electric purple */
+}
+
 /* ===== RESET & GENERAL ===== */
 * {
     margin: 0;
@@ -7,8 +20,10 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #2c3e50;
+    background: radial-gradient(1200px 600px at 10% -10%, rgba(58, 231, 255, 0.06), transparent 40%),
+                radial-gradient(1200px 600px at 100% 0%, rgba(255, 87, 194, 0.06), transparent 40%),
+                linear-gradient(180deg, var(--bg-900) 0%, #0f1422 100%);
+    color: var(--text-100);
     line-height: 1.6;
     min-height: 100vh;
 }
@@ -18,84 +33,101 @@ body {
     position: sticky;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    justify-content: center; /* center navbar content */
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background: linear-gradient(180deg, rgba(10, 14, 27, 0.75), rgba(10, 14, 27, 0.55));
+    border-bottom: 1px solid var(--border);
 }
 
 .nav-button {
-    padding: 12px 24px;
-    margin: 0 5px;
-    font-size: 15px;
-    font-weight: 500;
+    padding: 10px 18px;
+    margin: 0 4px;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    border: none;
-    border-radius: 4px;
-    background-color: transparent;
-    color: white;
-    transition: all 0.3s ease;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(40, 47, 75, 0.45), rgba(27, 32, 54, 0.45));
+    color: var(--text-100);
+    transition: all 0.25s ease;
     position: relative;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
 }
 
 .nav-button:hover {
-    background-color: #f093fb !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(240, 147, 251, 0.4);
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0.25rem rgba(58, 231, 255, 0.55), 0 8px 18px rgba(0,0,0,0.35);
 }
 
 .nav-button:active {
     transform: translateY(0);
+    box-shadow: 0 0 0.35rem rgba(255, 87, 194, 0.6);
+    border-color: var(--accent-pink);
 }
 
 .nav-button:focus {
-    outline: 2px solid #3498db;
+    outline: 2px solid var(--accent-purple);
     outline-offset: 2px;
 }
 
 /* ===== PAGES DE CONTENU ===== */
 h2 {
-    color: #2c3e50;
-    border-bottom: 4px solid;
-    border-image: linear-gradient(90deg, #667eea, #f093fb) 1;
-    padding-bottom: 15px;
-    margin-bottom: 30px;
-    font-size: 28px;
+    color: var(--text-100);
+    padding-bottom: 10px;
+    margin-bottom: 24px;
+    font-size: 26px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    /* professional subtle accent underline */
+    background-image: linear-gradient(90deg, var(--accent-blue), var(--accent-pink));
+    background-repeat: no-repeat;
+    background-size: 180px 2px;
+    background-position: left bottom;
 }
 
 h3 {
-    color: white;
+    color: var(--text-100);
     margin: 0;
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
 }
 
 p {
     font-size: 16px;
     line-height: 1.8;
-    color: #34495e;
+    color: var(--text-300);
 }
 
 /* ===== CARDS & CONTAINERS ===== */
 .page-card {
-    background-color: white;
-    padding: 24px;
+    background-color: var(--card-800);
+    padding: 20px;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    border-top: 4px solid #667eea;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    transition: all 0.25s ease;
+    border: 1px solid var(--border);
 }
 
 .page-card:hover {
-    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.15);
-    transform: translateY(-4px);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35), 0 0 0.35rem rgba(123, 92, 255, 0.18);
+    transform: translateY(-3px);
 }
 
 /* ===== BUTTON STYLES ===== */
 button {
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: all 0.25s ease;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-100);
 }
 
 button:hover {
@@ -108,13 +140,20 @@ button:active {
 
 /* ===== GRAPHS & PLOTLY ===== */
 .plotly-graph-div {
-    border-radius: 4px;
+    border-radius: 10px;
+    background: var(--bg-800);
+    border: 1px solid var(--border);
+}
+
+/* Improve plotly label contrast on dark background */
+.js-plotly-plot .plotly text {
+    fill: var(--text-100) !important;
 }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .nav-button {
-        padding: 10px 16px;
+        padding: 8px 14px;
         margin: 0 3px;
         font-size: 13px;
     }

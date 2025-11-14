@@ -157,4 +157,11 @@ if __name__ == "__main__":
         logger.info("(Debug reload detected; skipping setup_data)")
     
     logger.info("Dashboard sur http://127.0.0.1:8050/")
-    app.run(debug=True, port=8050)
+    # Masquer la barre 'Dash Dev Tools' en bas de page tout en gardant le reload
+    app.run(
+        debug=True,
+        port=8050,
+        dev_tools_ui=False,               # cache la barre Errors/Callbacks/Update
+        dev_tools_props_check=False,      # évite les popups verbeux
+        dev_tools_silence_routes_logging=True,
+    )

@@ -106,15 +106,18 @@ def _make_departments_choropleth(year=2023):
             color="accidents",
             featureidkey="properties.code",
             projection="mercator",
-            color_continuous_scale="Purples",
-            title="accidentologie par département (france)",
+            color_continuous_scale=[[0, "#1a2035"], [0.5, "#3ae7ff"], [1, "#ff57c2"]],
+            title="ACCIDENTOLOGIE PAR DÉPARTEMENT (FRANCE)",
             hover_name="dept",
         )
         fig.update_geos(fitbounds="locations", visible=False)
         fig.update_layout(
             height=600,
             margin={"l": 0, "r": 0, "t": 40, "b": 0},
-            template="plotly_white",
+            template="plotly_dark",
+            paper_bgcolor="#181d31",
+            plot_bgcolor="#14192a",
+            font={"color": "#e6e9f2"},
         )
         return fig
 
@@ -201,15 +204,18 @@ def _make_communes_choropleth(year=2023):
             color="accidents",
             featureidkey="properties.code",
             projection="mercator",
-            color_continuous_scale="Reds",
-            title="accidentologie par commune (france)",
+            color_continuous_scale=[[0, "#1a2035"], [0.5, "#3ae7ff"], [1, "#ff57c2"]],
+            title="ACCIDENTOLOGIE PAR COMMUNE (FRANCE)",
             hover_name="code_commune",
         )
         fig.update_geos(fitbounds="locations", visible=False)
         fig.update_layout(
             height=600,
             margin={"l": 0, "r": 0, "t": 40, "b": 0},
-            template="plotly_white",
+            template="plotly_dark",
+            paper_bgcolor="#181d31",
+            plot_bgcolor="#14192a",
+            font={"color": "#e6e9f2"},
         )
         return fig
 
@@ -289,19 +295,19 @@ def _make_speed_histogram(year=2023):
             df,
             x="delta_v",
             nbins=50,
-            title=f"mesures radar — analyse des vitesses ({year})",
+            title=f"MESURES RADAR — ANALYSE DES VITESSES ({year})",
             labels={
                 "delta_v": "écart de vitesse (km/h)",
                 "count": "nombre de mesures",
             },
-            color_discrete_sequence=["#667eea"],
+            color_discrete_sequence=["#3ae7ff"],
             hover_data={"categorie": True},
         )
 
         fig.add_vline(
             x=0,
             line_dash="dash",
-            line_color="#f093fb",
+            line_color="#ff57c2",
             line_width=3,
             annotation_text="limite de vitesse",
             annotation_position="top right",
@@ -318,10 +324,10 @@ def _make_speed_histogram(year=2023):
         fig.update_layout(
             height=550,
             bargap=0.02,
-            template="plotly_white",
+            template="plotly_dark",
             title_font_size=18,
             title_x=0.5,
-            title_font_color="#2c3e50",
+            title_font_color="#e6e9f2",
             xaxis_title=(
                 "écart de vitesse (km/h)"
                 "<br><span style='font-size:11px; color:#7f8c8d'>"
@@ -332,20 +338,20 @@ def _make_speed_histogram(year=2023):
             xaxis_title_font_size=14,
             yaxis_title_font_size=14,
             hovermode="x unified",
-            paper_bgcolor="white",
-            plot_bgcolor="rgba(240, 248, 255, 0.3)",
+            paper_bgcolor="#181d31",
+            plot_bgcolor="#14192a",
             margin={"l": 80, "r": 80, "t": 100, "b": 80},
             font={
                 "family": "'Segoe UI', Tahoma, Geneva, Verdana",
                 "size": 12,
-                "color": "#2c3e50",
+                "color": "#e6e9f2",
             },
             showlegend=False,
         )
         fig.update_traces(
-            marker_line_color="white",
+            marker_line_color="#0e111b",
             marker_line_width=1,
-            marker_color="#667eea",
+            marker_color="#3ae7ff",
             hovertemplate=(
                 "<b>écart:</b> %{x:.1f} km/h<br>"
                 "<b>mesures:</b> %{y}<br>"
@@ -355,13 +361,13 @@ def _make_speed_histogram(year=2023):
         fig.update_xaxes(
             showgrid=True,
             gridwidth=1,
-            gridcolor="rgba(200, 200, 200, 0.2)",
+            gridcolor="rgba(255, 255, 255, 0.06)",
             zeroline=True,
             zerolinewidth=2,
-            zerolinecolor="rgba(240, 147, 251, 0.3)",
+            zerolinecolor="rgba(255, 87, 194, 0.35)",
         )
         fig.update_yaxes(
-            showgrid=True, gridwidth=1, gridcolor="rgba(200, 200, 200, 0.2)"
+            showgrid=True, gridwidth=1, gridcolor="rgba(255, 255, 255, 0.06)"
         )
         return fig
 
@@ -445,15 +451,15 @@ def _make_accidents_by_day_line(year=2023, agg_filter: int | str | None = None):
                 y=df["accidents"],
                 mode="lines+markers",
                 name="accidents",
-                line={"color": "#6b5bd3", "width": 4, "shape": "spline"},
+                line={"color": "#3ae7ff", "width": 4, "shape": "spline"},
                 marker={
                     "size": 12,
-                    "color": "#6b5bd3",
+                    "color": "#3ae7ff",
                     "symbol": "circle",
-                    "line": {"color": "white", "width": 2},
+                    "line": {"color": "#0e111b", "width": 2},
                 },
                 fill="tozeroy",
-                fillcolor="rgba(107, 91, 211, 0.15)",
+                fillcolor="rgba(58, 231, 255, 0.15)",
                 hovertemplate=(
                     "<b>heure %{x:.0f}h</b><br>accidents: <b>%{y}</b><extra></extra>"
                 ),
@@ -470,11 +476,11 @@ def _make_accidents_by_day_line(year=2023, agg_filter: int | str | None = None):
             yaxis_title="nombre d'accidents",
             height=550,
             margin={"l": 80, "r": 60, "t": 100, "b": 80},
-            template="plotly_white",
+            template="plotly_dark",
             hovermode="x unified",
-            plot_bgcolor="rgba(240, 248, 255, 0.3)",
-            paper_bgcolor="white",
-            font={"family": "Arial, sans-serif", "size": 12, "color": "#2c3e50"},
+            plot_bgcolor="#14192a",
+            paper_bgcolor="#181d31",
+            font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
             showlegend=False,
         )
         fig.update_xaxes(
@@ -563,8 +569,8 @@ def _make_accidents_pie_chart(year=2023, agg_filter: int | str | None = None):
                     labels=df["agg_label"],
                     values=df["count"],
                     marker={
-                        "colors": ["#6b5bd3", "#f093fb"],
-                        "line": {"color": "white", "width": 2},
+                        "colors": ["#3ae7ff", "#ff57c2"],
+                        "line": {"color": "#0e111b", "width": 2},
                     },
                     textposition="auto",
                     hovertemplate=(
@@ -572,27 +578,28 @@ def _make_accidents_pie_chart(year=2023, agg_filter: int | str | None = None):
                         "<br>part: %{percent}<extra></extra>"
                     ),
                     textinfo="label+percent",
-                    textfont={"size": 14, "color": "white", "family": "Arial, sans-serif"},
+                    textfont={"size": 14, "color": "#e6e9f2", "family": "Arial, sans-serif"},
                 )
             ]
         )
         fig.update_layout(
             title={
-                "text": "distribution des accidents par agglomération",
+                "text": "DISTRIBUTION DES ACCIDENTS PAR AGGLOMÉRATION",
                 "x": 0.5,
                 "xanchor": "center",
-                "font": {"size": 16, "color": "#2c3e50", "family": "Arial, sans-serif"},
+                "font": {"size": 16, "color": "#e6e9f2", "family": "Arial, sans-serif"},
             },
             height=420,
             margin={"l": 20, "r": 20, "t": 80, "b": 20},
-            font={"family": "Arial, sans-serif", "size": 12},
-            paper_bgcolor="white",
+            font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
+            paper_bgcolor="#181d31",
+            plot_bgcolor="#14192a",
             showlegend=True,
             legend={
                 "x": 0.7,
                 "y": 0.5,
-                "bgcolor": "rgba(255,255,255,0.8)",
-                "bordercolor": "#ddd",
+                "bgcolor": "rgba(14,17,27,0.6)",
+                "bordercolor": "#2b3150",
                 "borderwidth": 1,
             },
         )
@@ -621,8 +628,6 @@ about_page = html.Div(
         html.H2(
             "à propos",
             style={
-                "color": "#2c3e50",
-                "borderBottom": "3px solid #3498db",
                 "paddingBottom": "10px",
             },
         ),
@@ -647,12 +652,8 @@ about_page = html.Div(
                     style={"fontSize": "14px", "color": "#7f8c8d", "marginTop": "20px"},
                 ),
             ],
-            style={
-                "backgroundColor": "white",
-                "padding": "24px",
-                "borderRadius": "8px",
-                "boxShadow": "0 2px 8px rgba(0,0,0,0.1)",
-            },
+            className="page-card",
+            style={"padding": "24px"},
         ),
     ]
 )
@@ -668,25 +669,13 @@ def create_histogram_page(year=2023):
         "fontSize": "15px",
         "fontWeight": "600",
         "cursor": "pointer",
-        "border": "2px solid #667eea",
+        "border": "1px solid transparent",
         "borderRadius": "6px",
-        "backgroundColor": "#667eea",
-        "color": "white",
-        "boxShadow": "0 4px 15px rgba(102, 126, 234, 0.4)",
+        "backgroundColor": "transparent",
+        "color": "var(--text-100)",
         "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
     }
-    inactive_btn = {
-        "padding": "12px 24px",
-        "margin": "8px 0",
-        "fontSize": "15px",
-        "fontWeight": "600",
-        "cursor": "pointer",
-        "border": "2px solid #e8e8f0",
-        "borderRadius": "6px",
-        "backgroundColor": "#f5f5f8",
-        "color": "#999",
-        "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
-    }
+    inactive_btn = dict(active_btn)
 
     style_2023 = active_btn if year == 2023 else inactive_btn
     style_2021 = active_btn if year == 2021 else inactive_btn
@@ -714,14 +703,11 @@ def create_histogram_page(year=2023):
                                 config={"responsive": True, "displayModeBar": True},
                             ),
                         ],
+                        className="page-card",
                         style={
-                            "backgroundColor": "white",
                             "padding": "28px",
-                            "borderRadius": "12px",
-                            "boxShadow": "0 4px 20px rgba(102, 126, 234, 0.12)",
                             "flex": "1",
                             "minWidth": "0",
-                            "borderTop": "4px solid #667eea",
                         },
                     ),
                     html.Div(
@@ -738,7 +724,7 @@ def create_histogram_page(year=2023):
                                 },
                             ),
                             *year_buttons,
-                            html.Hr(style={"margin": "20px 0", "borderColor": "#e8e8f0"}),
+                            html.Hr(style={"margin": "20px 0"}),
                             html.Div(
                                 "sélectionnez l’année",
                                 style={
@@ -749,6 +735,7 @@ def create_histogram_page(year=2023):
                                 },
                             ),
                         ],
+                        className="page-card",
                         style={
                             "display": "flex",
                             "flexDirection": "column",
@@ -756,10 +743,6 @@ def create_histogram_page(year=2023):
                             "width": "160px",
                             "marginLeft": "24px",
                             "padding": "28px 20px",
-                            "backgroundColor": "#f8f9fc",
-                            "borderRadius": "12px",
-                            "boxShadow": "0 4px 20px rgba(102, 126, 234, 0.08)",
-                            "borderTop": "4px solid #f093fb",
                         },
                     ),
                 ],
@@ -773,86 +756,48 @@ histogram_page = create_histogram_page()
 
 
 def create_choropleth_page(carte_mode="dept", year=2023):
-    """crée la page choroplèthe dynamiquement."""
-    if carte_mode == "commune":
-        fig = _make_communes_choropleth(year)
-        dept_style = {
-            "padding": "12px 24px",
-            "margin": "0 8px",
-            "fontSize": "14px",
-            "fontWeight": "600",
-            "cursor": "pointer",
-            "border": "2px solid #bdc3c7",
-            "borderRadius": "6px",
-            "backgroundColor": "#ecf0f1",
-            "color": "#7f8c8d",
-            "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
-        }
-        commune_style = {
-            "padding": "12px 24px",
-            "margin": "0 8px",
-            "fontSize": "14px",
-            "fontWeight": "600",
-            "cursor": "pointer",
-            "border": "2px solid #3498db",
-            "borderRadius": "6px",
-            "backgroundColor": "#3498db",
-            "color": "white",
-            "boxShadow": "0 4px 12px rgba(52, 152, 219, 0.3)",
-            "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
-        }
-    else:
-        fig = _make_departments_choropleth(year)
-        dept_style = {
-            "padding": "12px 24px",
-            "margin": "0 8px",
-            "fontSize": "14px",
-            "fontWeight": "600",
-            "cursor": "pointer",
-            "border": "2px solid #3498db",
-            "borderRadius": "6px",
-            "backgroundColor": "#3498db",
-            "color": "white",
-            "boxShadow": "0 4px 12px rgba(52, 152, 219, 0.3)",
-            "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
-        }
-        commune_style = {
-            "padding": "12px 24px",
-            "margin": "0 8px",
-            "fontSize": "14px",
-            "fontWeight": "600",
-            "cursor": "pointer",
-            "border": "2px solid #bdc3c7",
-            "borderRadius": "6px",
-            "backgroundColor": "#ecf0f1",
-            "color": "#7f8c8d",
-            "transition": "all 0.3s cubic-bezier(.25,.46,.45,.94)",
-        }
+    """crée la page choroplèthe avec une barre latérale à gauche."""
+    # figure selon le mode
+    fig = _make_communes_choropleth(year) if carte_mode == "commune" else _make_departments_choropleth(year)
 
-    # Styles pour les boutons année
-    active_year_style = {
-        "padding": "10px 20px",
-        "margin": "0 4px",
-        "fontSize": "13px",
-        "fontWeight": "600",
+    # palette et styles boutons (dark + néon)
+    base_btn = {
+        "padding": "12px 16px",
+        "fontSize": "14px",
+        "fontWeight": "700",
         "cursor": "pointer",
-        "border": "2px solid #667eea",
-        "borderRadius": "6px",
-        "backgroundColor": "#667eea",
+        "borderRadius": "10px",
+        "border": "1px solid var(--border)",
+        "backgroundColor": "#1a2035",
+        "color": "#b9bfd3",
+        "textAlign": "center",
+        "boxShadow": "0 6px 20px rgba(0,0,0,0.25)",
+    }
+    dept_active = {
+        **base_btn,
+        "backgroundColor": "#7b5cff",
         "color": "white",
-        "boxShadow": "0 2px 8px rgba(102, 126, 234, 0.3)",
+        "boxShadow": "0 0 10px rgba(123,92,255,0.6)",
+        "border": "1px solid rgba(123,92,255,0.8)",
     }
-    inactive_year_style = {
-        "padding": "10px 20px",
-        "margin": "0 4px",
-        "fontSize": "13px",
-        "fontWeight": "600",
-        "cursor": "pointer",
-        "border": "2px solid #e8e8f0",
-        "borderRadius": "6px",
-        "backgroundColor": "#f5f5f8",
-        "color": "#999",
+    commune_active = {
+        **base_btn,
+        "backgroundColor": "#ff57c2",
+        "color": "white",
+        "boxShadow": "0 0 10px rgba(255,87,194,0.6)",
+        "border": "1px solid rgba(255,87,194,0.8)",
     }
+    dept_style = dept_active if carte_mode == "dept" else base_btn
+    commune_style = commune_active if carte_mode == "commune" else base_btn
+
+    active_year_style = {
+        **base_btn,
+        "backgroundColor": "#3ae7ff",
+        "color": "#0e111b",
+        "border": "1px solid rgba(58,231,255,0.9)",
+        "boxShadow": "0 0 10px rgba(58,231,255,0.55)",
+    }
+    inactive_year_style = base_btn
     
     available_carte_years = sorted(_available_years(), reverse=True)
     year_buttons = [
@@ -870,29 +815,34 @@ def create_choropleth_page(carte_mode="dept", year=2023):
             html.H2("carte choroplèthe des accidents"),
             html.Div(
                 [
-                    html.Button("vue par département", id="btn-carte-dept", n_clicks=0, style=dept_style),
-                    html.Button("vue par commune", id="btn-carte-commune", n_clicks=0, style=commune_style),
-                    html.Div(style={"width": "40px"}),  # Spacer
-                    *year_buttons,
+                    html.Div(
+                        [
+                            html.Div("vue", style={"fontSize": "12px", "color": "var(--text-300)", "marginBottom": "6px"}),
+                            html.Button("vue par département", id="btn-carte-dept", n_clicks=0, style=dept_style),
+                            html.Button("vue par commune", id="btn-carte-commune", n_clicks=0, style=commune_style),
+                            html.Hr(style={"margin": "16px 0"}),
+                            html.Div("année", style={"fontSize": "12px", "color": "var(--text-300)", "marginBottom": "8px"}),
+                            html.Div(year_buttons, style={"display": "grid", "gridTemplateColumns": "repeat(2, 1fr)", "gap": "10px"}),
+                        ],
+                        className="page-card",
+                        style={
+                            "width": "230px",
+                            "padding": "16px",
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "gap": "10px",
+                            "position": "sticky",
+                            "top": "100px",
+                            "alignSelf": "flex-start",
+                        },
+                    ),
+                    html.Div(
+                        [dcc.Graph(figure=fig, config={"responsive": True, "displayModeBar": True})],
+                        className="page-card",
+                        style={"padding": "20px", "flex": "1", "minWidth": "0"},
+                    ),
                 ],
-                style={
-                    "textAlign": "center",
-                    "marginBottom": "24px",
-                    "display": "flex",
-                    "justifyContent": "center",
-                    "gap": "12px",
-                    "alignItems": "center",
-                },
-            ),
-            html.Div(
-                [dcc.Graph(figure=fig, config={"responsive": True, "displayModeBar": True})],
-                style={
-                    "backgroundColor": "white",
-                    "padding": "28px",
-                    "borderRadius": "12px",
-                    "boxShadow": "0 4px 20px rgba(0,0,0,0.08)",
-                    "borderTop": "4px solid #3498db",
-                },
+                style={"display": "flex", "gap": "24px", "alignItems": "flex-start"},
             ),
         ],
         id="choropleth-page-container",
@@ -1079,14 +1029,8 @@ graph_page = html.Div(
                     style={"marginTop": "12px"},
                 ),
             ],
-            style={
-                "backgroundColor": "#f9f9fb",
-                "padding": "20px",
-                "borderRadius": "12px",
-                "boxShadow": "0 2px 10px rgba(0,0,0,0.04)",
-                "border": "1px solid #ecf0f1",
-                "marginBottom": "28px",
-            },
+            className="page-card",
+            style={"padding": "20px", "marginBottom": "28px"},
         ),
         html.Div(
             [
@@ -1109,12 +1053,10 @@ graph_page = html.Div(
                             config={"responsive": True, "displayModeBar": True},
                         ),
                     ],
+                    className="page-card",
                     style={
-                        "backgroundColor": "white",
                         "padding": "28px",
-                        "borderRadius": "12px",
-                        "boxShadow": "0 4px 20px rgba(0,0,0,0.08)",
-                        "borderTop": "4px solid #6b5bd3",
+                        "borderTop": "4px solid #7b5cff",
                         "width": "100%",
                     },
                 )
@@ -1142,12 +1084,10 @@ graph_page = html.Div(
                             config={"responsive": True, "displayModeBar": True},
                         ),
                     ],
+                    className="page-card",
                     style={
-                        "backgroundColor": "white",
                         "padding": "28px",
-                        "borderRadius": "12px",
-                        "boxShadow": "0 4px 20px rgba(0,0,0,0.08)",
-                        "borderTop": "4px solid #f093fb",
+                        "borderTop": "4px solid #ff57c2",
                         "flex": "1",
                         "minWidth": "45%",
                     },
@@ -1178,13 +1118,11 @@ graph_page = html.Div(
                             },
                         ),
                     ],
+                    className="page-card",
                     style={
-                        "backgroundColor": "#f9f9fb",
                         "padding": "28px",
-                        "borderRadius": "12px",
-                        "boxShadow": "0 2px 10px rgba(0,0,0,0.04)",
-                        "borderTop": "4px solid #bdc3c7",
-                        "border": "2px dashed #e8e8f0",
+                        "borderTop": "4px solid #2b3150",
+                        "border": "2px dashed var(--border)",
                         "flex": "1",
                         "minWidth": "45%",
                     },
@@ -1242,10 +1180,9 @@ def create_nav_button(label, button_id, active=False):
             "fontSize": "15px",
             "fontWeight": "500",
             "cursor": "pointer",
-            "border": "none",
-            "borderRadius": "4px",
-            "backgroundColor": "#3498db" if active else "transparent",
-            "color": "white",
+            "borderRadius": "8px",
+            "backgroundColor": "transparent",
+            "color": "inherit",
             "transition": "all 0.3s ease",
         },
         className="nav-button",
@@ -1259,7 +1196,7 @@ navbar = html.Div(
                 html.Div(
                     [
                         html.H3(
-                            "dashboard accidentologie",
+                            "DASHBOARD ACCIDENTOLOGIE",
                             style={"color": "white", "margin": "0 20px 0 0", "letterSpacing": "0.5px"},
                         )
                     ],
@@ -1282,9 +1219,7 @@ navbar = html.Div(
                 "justifyContent": "space-between",
                 "alignItems": "center",
                 "padding": "0 30px",
-                "backgroundColor": "#6b5bd3",
                 "minHeight": "75px",
-                "boxShadow": "0 8px 32px rgba(0,0,0,0.15)",
             },
         )
     ],
@@ -1312,7 +1247,6 @@ layout = html.Div(
     ],
     style={
         "fontFamily": "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        "backgroundColor": "#efe6ff",
         "minHeight": "100vh",
     },
 )
