@@ -965,7 +965,7 @@ def _make_time_series(
                     # area fill only for single series to avoid stacking confusion
                     fill="tozeroy" if not show_leg else None,
                     fillcolor=("rgba(58, 231, 255, 0.12)" if not show_leg else None),
-                    hovertemplate=(f"<b>année {y}</b><br>%{{x}} → <b>%{{y}}</b><extra></extra>"),
+                    hovertemplate=(f"<b>année {y}</b><br>accidents: <b>%{{y}}</b><extra></extra>"),
                 )
             )
         fig.update_layout(
@@ -1652,7 +1652,7 @@ def _make_catv_gender_bar_chart(
             },
             barmode="stack",
             height=500,
-            margin={"l": 150, "r": 20, "t": 80, "b": 60},
+            margin={"l": 150, "r": 20, "t": 80, "b": 80},
             font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
             paper_bgcolor="#1a1d2e",
             plot_bgcolor="#1a1d2e",
@@ -1664,12 +1664,15 @@ def _make_catv_gender_bar_chart(
             },
             yaxis={"tickfont": {"color": "#e6e9f2"}},
             legend={
-                "font": {"color": "#e6e9f2"},
+                "font": {"color": "#e6e9f2", "size": 13},
                 "orientation": "h",
                 "yanchor": "bottom",
-                "y": -0.15,
+                "y": -0.2,
                 "xanchor": "center",
                 "x": 0.5,
+                "bgcolor": "rgba(26, 29, 46, 0.8)",
+                "bordercolor": "#6b5bd3",
+                "borderwidth": 1,
             },
         )
         return fig
@@ -1700,6 +1703,12 @@ def _make_age_histogram(
 ):
     """histogramme de distribution par âge des conducteurs."""
     try:
+        # Convertir birth_year en age pour le filtrage après calcul
+        age_min_filter = None
+        age_max_filter = None
+        if birth_year_min is not None and birth_year_max is not None:
+            age_min_filter = 2024 - birth_year_max
+            age_max_filter = 2024 - birth_year_min
 
         def _query_one(y: int) -> pd.DataFrame:
             # Toujours besoin de usager pour an_nais
@@ -1725,12 +1734,7 @@ def _make_age_histogram(
             if trajet_filter is not None:
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
-            if (birth_year_min is not None) and (birth_year_max is not None):
-                where_parts.append(
-                    "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
-                )
-                params["birth_year_min"] = birth_year_min
-                params["birth_year_max"] = birth_year_max
+            # NE PAS filtrer par birth_year dans la requête SQL
             if y != 2024:
                 if catv_filter is not None:
                     where_parts.append("CAST(catv AS INTEGER) = :catv")
@@ -1779,19 +1783,73 @@ def _make_age_histogram(
         df["age"] = df["annee"] - df["an_nais"]
         df = df[(df["age"] >= 0) & (df["age"] <= 120)]  # Filtrer les âges aberrants
         
+        # Appliquer le filtre d'âge si spécifié
+        if age_min_filter is not None and age_max_filter is not None:
+            df = df[(df["age"] >= age_min_filter) & (df["age"] <= age_max_filter)]
+        
+        # Définir les tranches d'âge
+        def categorize_age(age):
+            if age < 18:
+                return "0-17 ans"
+            elif age < 25:
+                return "18-24 ans"
+            elif age < 35:
+                return "25-34 ans"
+            elif age < 45:
+                return "35-44 ans"
+            elif age < 55:
+                return "45-54 ans"
+            elif age < 65:
+                return "55-64 ans"
+            elif age < 75:
+                return "65-74 ans"
+            else:
+                return "75+ ans"
+        
+        df["tranche_age"] = df["age"].apply(categorize_age)
+        
         # Agréger par âge
-        df = df.groupby("age", as_index=False).agg({"count": "sum"})
+        df = df.groupby(["age", "tranche_age"], as_index=False).agg({"count": "sum"})
         df = df.sort_values("age")
+        
+        # Couleurs pour chaque tranche d'âge (néon du dashboard)
+        color_map = {
+            "0-17 ans": "#3ae7ff",
+            "18-24 ans": "#4ecfff",
+            "25-34 ans": "#5db7ff",
+            "35-44 ans": "#6d9fff",
+            "45-54 ans": "#7d87ff",
+            "55-64 ans": "#8d6fff",
+            "65-74 ans": "#9d57ff",
+            "75+ ans": "#ad3fff"
+        }
+        
+        df["color"] = df["tranche_age"].map(color_map)
 
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
                 x=df["age"],
                 y=df["count"],
-                marker={"color": "#3ae7ff", "line": {"color": "#1a8fa8", "width": 1}},
-                hovertemplate="<b>Âge: %{x} ans</b><br>Accidents: %{y}<extra></extra>",
+                marker={"color": df["color"], "line": {"color": "#1a1d2e", "width": 1}},
+                hovertemplate="<b>Âge: %{x} ans</b><br>Tranche: %{customdata}<br>Accidents: %{y}<extra></extra>",
+                customdata=df["tranche_age"],
+                showlegend=False,
             )
         )
+        
+        # Ajouter la légende manuellement avec les tranches d'âge
+        for tranche, color in color_map.items():
+            fig.add_trace(
+                go.Scatter(
+                    x=[None],
+                    y=[None],
+                    mode="markers",
+                    marker={"size": 10, "color": color},
+                    name=tranche,
+                    showlegend=True,
+                )
+            )
 
         fig.update_layout(
             title={
@@ -1818,6 +1876,201 @@ def _make_age_histogram(
             paper_bgcolor="#1a1d2e",
             plot_bgcolor="#1a1d2e",
             bargap=0.1,
+            showlegend=True,
+            legend={
+                "orientation": "v",
+                "yanchor": "top",
+                "y": 0.98,
+                "xanchor": "right",
+                "x": 0.98,
+                "bgcolor": "rgba(26, 29, 46, 0.8)",
+                "bordercolor": "#6b5bd3",
+                "borderwidth": 1,
+                "font": {"color": "#e6e9f2", "size": 11},
+            },
+        )
+        return fig
+    except Exception as err:
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"erreur: {str(err)[:100]}",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
+        return fig
+
+
+def _make_age_tranche_histogram(
+    year=2023,
+    agg_filter: int | str | None = None,
+    lum_filter: int | str | None = None,
+    atm_filter: int | str | None = None,
+    sexe_filter: int | None = None,
+    trajet_filter: int | None = None,
+    birth_year_min: int | None = None,
+    birth_year_max: int | None = None,
+    catv_filter: int | None = None,
+    motor_filter: int | None = None,
+):
+    """histogramme de distribution par tranches d'âge uniquement."""
+    try:
+        # Convertir birth_year en age pour le filtrage après calcul
+        age_min_filter = None
+        age_max_filter = None
+        if birth_year_min is not None and birth_year_max is not None:
+            age_min_filter = 2024 - birth_year_max
+            age_max_filter = 2024 - birth_year_min
+        
+        def _query_one(y: int) -> pd.DataFrame:
+            if y == 2024:
+                table_name = "caract_usager_2024"
+            else:
+                table_name = f"caract_usager_vehicule_{y}"
+            where_parts = ["an_nais IS NOT NULL", "CAST(an_nais AS INTEGER) > 0"]
+            params = {}
+            if agg_filter in (1, 2):
+                where_parts.append("CAST(agg AS INTEGER) = :agg")
+                params["agg"] = agg_filter
+            if lum_filter in (1, 2, 3, 4, 5):
+                where_parts.append("CAST(lum AS INTEGER) = :lum")
+                params["lum"] = lum_filter
+            if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+                where_parts.append("CAST(atm AS INTEGER) = :atm")
+                params["atm"] = atm_filter
+            if sexe_filter is not None:
+                where_parts.append("CAST(sexe AS INTEGER) = :sexe")
+                params["sexe"] = sexe_filter
+            if trajet_filter is not None:
+                where_parts.append("CAST(trajet AS INTEGER) = :trajet")
+                params["trajet"] = trajet_filter
+            # NE PAS filtrer par birth_year dans la requête SQL
+            if y != 2024:
+                if catv_filter is not None:
+                    where_parts.append("CAST(catv AS INTEGER) = :catv")
+                    params["catv"] = catv_filter
+                if motor_filter is not None:
+                    where_parts.append("CAST(motor AS INTEGER) = :motor")
+                    params["motor"] = motor_filter
+            where_clause = " AND ".join(where_parts)
+            sql = f"SELECT an_nais, annee, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY an_nais, annee"
+            return query_db(sql, params)
+
+        if isinstance(year, str) and year == "all":
+            dfs = []
+            for y in [2020, 2021, 2022, 2023, 2024]:
+                df = _query_one(y)
+                if df is not None and not df.empty:
+                    dfs.append(df)
+            if dfs:
+                df = pd.concat(dfs, ignore_index=True)
+            else:
+                df = pd.DataFrame()
+        else:
+            df = _query_one(int(year))
+
+        if df is None or df.empty:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="aucune donnée disponible",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+            )
+            return fig
+
+        df["an_nais"] = pd.to_numeric(df["an_nais"], errors="coerce")
+        df["annee"] = pd.to_numeric(df["annee"], errors="coerce")
+        df = df.dropna(subset=["an_nais", "annee"])
+        df["an_nais"] = df["an_nais"].astype(int)
+        df["annee"] = df["annee"].astype(int)
+        df = df[(df["an_nais"] >= 1900) & (df["an_nais"] <= 2024)]
+        df["age"] = df["annee"] - df["an_nais"]
+        df = df[(df["age"] >= 0) & (df["age"] <= 120)]
+        
+        # Appliquer le filtre d'âge si spécifié
+        if age_min_filter is not None and age_max_filter is not None:
+            df = df[(df["age"] >= age_min_filter) & (df["age"] <= age_max_filter)]
+        
+        def categorize_age(age):
+            if age < 18:
+                return "0-17 ans"
+            elif age < 25:
+                return "18-24 ans"
+            elif age < 35:
+                return "25-34 ans"
+            elif age < 45:
+                return "35-44 ans"
+            elif age < 55:
+                return "45-54 ans"
+            elif age < 65:
+                return "55-64 ans"
+            elif age < 75:
+                return "65-74 ans"
+            else:
+                return "75+ ans"
+        
+        df["tranche_age"] = df["age"].apply(categorize_age)
+        
+        # Agréger par TRANCHE uniquement
+        df_tranche = df.groupby("tranche_age", as_index=False).agg({"count": "sum"})
+        
+        # Ordre des tranches
+        tranche_order = ["0-17 ans", "18-24 ans", "25-34 ans", "35-44 ans", "45-54 ans", "55-64 ans", "65-74 ans", "75+ ans"]
+        df_tranche["tranche_age"] = pd.Categorical(df_tranche["tranche_age"], categories=tranche_order, ordered=True)
+        df_tranche = df_tranche.sort_values("tranche_age")
+        
+        color_map = {
+            "0-17 ans": "#3ae7ff",
+            "18-24 ans": "#4ecfff",
+            "25-34 ans": "#5db7ff",
+            "35-44 ans": "#6d9fff",
+            "45-54 ans": "#7d87ff",
+            "55-64 ans": "#8d6fff",
+            "65-74 ans": "#9d57ff",
+            "75+ ans": "#ad3fff"
+        }
+        
+        df_tranche["color"] = df_tranche["tranche_age"].map(color_map)
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Bar(
+                x=df_tranche["tranche_age"],
+                y=df_tranche["count"],
+                marker={"color": df_tranche["color"], "line": {"color": "#1a1d2e", "width": 1}},
+                hovertemplate="<b>%{x}</b><br>Accidents: %{y}<extra></extra>",
+            )
+        )
+
+        fig.update_layout(
+            title={
+                "text": "RÉPARTITION PAR TRANCHES D'ÂGE",
+                "x": 0.5,
+                "xanchor": "center",
+                "font": {"size": 16, "color": "#e6e9f2"},
+            },
+            xaxis={
+                "title": "Tranche d'âge",
+                "gridcolor": "#2d3548",
+                "tickfont": {"color": "#e6e9f2"},
+            },
+            yaxis={
+                "title": "Nombre d'accidents",
+                "gridcolor": "#2d3548",
+                "tickfont": {"color": "#e6e9f2"},
+            },
+            height=500,
+            margin={"l": 60, "r": 20, "t": 80, "b": 60},
+            font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
+            paper_bgcolor="#1a1d2e",
+            plot_bgcolor="#1a1d2e",
+            bargap=0.1,
+            showlegend=False,
         )
         return fig
     except Exception as err:
@@ -2612,16 +2865,54 @@ graph_page = html.Div(
                         ),
                         html.Div(
                             [
-                                html.H3(
-                                    "courbe 6 — répartition des conducteurs par âge",
-                                    style={
-                                        "fontSize": "16px",
-                                        "fontWeight": "600",
-                                        "color": "#e6e9f2",
-                                        "marginBottom": "16px",
-                                        "borderLeft": "4px solid #f093fb",
-                                        "paddingLeft": "12px",
-                                    },
+                                html.Div(
+                                    [
+                                        html.H3(
+                                            "courbe 6 — répartition des conducteurs par âge",
+                                            style={
+                                                "fontSize": "16px",
+                                                "fontWeight": "600",
+                                                "color": "#e6e9f2",
+                                                "marginBottom": "12px",
+                                                "borderLeft": "4px solid #f093fb",
+                                                "paddingLeft": "12px",
+                                            },
+                                        ),
+                                        html.Div(
+                                            [
+                                                html.Button(
+                                                    "Vue détaillée",
+                                                    id="btn-age-detail",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "padding": "8px 14px",
+                                                        "borderRadius": "8px",
+                                                        "border": "1px solid var(--border)",
+                                                        "backgroundColor": "#1a2035",
+                                                        "color": "#b9bfd3",
+                                                    },
+                                                ),
+                                                html.Button(
+                                                    "Tranches d'âge",
+                                                    id="btn-age-tranche",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "padding": "8px 14px",
+                                                        "borderRadius": "8px",
+                                                        "border": "1px solid var(--border)",
+                                                        "backgroundColor": "#1a2035",
+                                                        "color": "#b9bfd3",
+                                                        "marginLeft": "8px",
+                                                    },
+                                                ),
+                                            ],
+                                            style={
+                                                "display": "flex",
+                                                "justifyContent": "flex-start",
+                                                "marginBottom": "12px",
+                                            },
+                                        ),
+                                    ]
                                 ),
                                 dcc.Graph(
                                     id="graph-age-histogram",
@@ -2908,6 +3199,8 @@ def update_histogram_year(*_args):
         Input("btn-ts-day", "n_clicks"),
         Input("btn-ts-month", "n_clicks"),
         Input("btn-ts-weekday", "n_clicks"),
+        Input("btn-age-detail", "n_clicks"),
+        Input("btn-age-tranche", "n_clicks"),
     ],
 )
 def update_graph_page_charts(
@@ -2925,6 +3218,8 @@ def update_graph_page_charts(
     _n_d,
     _n_m,
     _n_w,
+    _n_age_detail,
+    _n_age_tranche,
 ):
     """met à jour la courbe temporelle (heures/jours/mois/jour de semaine) et les camemberts."""
     ctx = dash.callback_context
@@ -2977,6 +3272,7 @@ def update_graph_page_charts(
 
     # déterminer l'unité depuis le bouton cliqué
     unit = "hour"
+    age_view = "detail"  # Par défaut, vue détaillée
     if ctx.triggered:
         btn = ctx.triggered[0]["prop_id"].split(".")[0]
         if btn == "btn-ts-day":
@@ -2985,6 +3281,10 @@ def update_graph_page_charts(
             unit = "month"
         elif btn == "btn-ts-weekday":
             unit = "weekday"
+        elif btn == "btn-age-tranche":
+            age_view = "tranche"
+        elif btn == "btn-age-detail":
+            age_view = "detail"
 
     return (
         _make_time_series(
@@ -3049,6 +3349,17 @@ def update_graph_page_charts(
             motor_filter=motor_filter,
         ),
         _make_age_histogram(
+            year,
+            agg_filter=agg_filter,
+            lum_filter=lum_filter,
+            atm_filter=atm_filter,
+            sexe_filter=sexe_filter,
+            trajet_filter=trajet_filter,
+            birth_year_min=birth_year_min,
+            birth_year_max=birth_year_max,
+            catv_filter=catv_filter,
+            motor_filter=motor_filter,
+        ) if age_view == "detail" else _make_age_tranche_histogram(
             year,
             agg_filter=agg_filter,
             lum_filter=lum_filter,
