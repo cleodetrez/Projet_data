@@ -810,7 +810,7 @@ def _make_accidents_pie_chart(
     catv_filter: int | None = None,
     motor_filter: int | None = None,
 ):
-    """camembert : distribution des accidents par type d'agglomération.
+    """camembert : distribution des accidents par sexe.
 
     year: 2020..2024 | "all" pour agréger plusieurs années.
     """
@@ -824,7 +824,7 @@ def _make_accidents_pie_chart(
                 table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
             else:
                 table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
-            where_parts = ["agg IS NOT NULL"]
+            where_parts = ["sexe IS NOT NULL"]
             params = {}
             if agg_filter in (1, 2):
                 where_parts.append("CAST(agg AS INTEGER) = :agg")
@@ -853,8 +853,8 @@ def _make_accidents_pie_chart(
                 params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
             sql = (
-                f"SELECT agg, COUNT(*) AS count "
-                f"FROM {table_name} WHERE {where_clause} GROUP BY agg"
+                f"SELECT sexe, COUNT(*) AS count "
+                f"FROM {table_name} WHERE {where_clause} GROUP BY sexe"
             )
             return query_db(sql, params)
 
@@ -862,7 +862,7 @@ def _make_accidents_pie_chart(
             df1 = _query_one(2021)
             df2 = _query_one(2023)
             df = pd.concat([df1, df2], ignore_index=True)
-            df = df.groupby("agg", as_index=False).agg({"count": "sum"})
+            df = df.groupby("sexe", as_index=False).agg({"count": "sum"})
         else:
             df = _query_one(int(year))
 
@@ -878,14 +878,14 @@ def _make_accidents_pie_chart(
             )
             return fig
 
-        agg_labels = {1: "agglomération", 2: "hors agglomération"}
-        df["agg_label"] = df["agg"].map(agg_labels)
+        sexe_labels = {1: "homme", 2: "femme"}
+        df["sexe_label"] = df["sexe"].map(sexe_labels)
         df = df.sort_values(by="count", ascending=False)
 
         fig = go.Figure(
             data=[
                 go.Pie(
-                    labels=df["agg_label"],
+                    labels=df["sexe_label"],
                     values=df["count"],
                     marker={
                         "colors": ["#3ae7ff", "#ff57c2"],
@@ -903,7 +903,7 @@ def _make_accidents_pie_chart(
         )
         fig.update_layout(
             title={
-                "text": "DISTRIBUTION DES ACCIDENTS PAR AGGLOMÉRATION",
+                "text": "DISTRIBUTION DES ACCIDENTS PAR SEXE",
                 "x": 0.5,
                 "xanchor": "center",
                 "font": {"size": 16, "color": "#e6e9f2", "family": "Arial, sans-serif"},
@@ -935,6 +935,494 @@ def _make_accidents_pie_chart(
             y=0.5,
             showarrow=False,
         )
+        return fig
+
+
+def _make_catv_pie_chart(
+    year=2023,
+    agg_filter: int | str | None = None,
+    lum_filter: int | str | None = None,
+    atm_filter: int | str | None = None,
+    sexe_filter: int | None = None,
+    trajet_filter: int | None = None,
+    birth_year_min: int | None = None,
+    birth_year_max: int | None = None,
+    catv_filter: int | None = None,
+    motor_filter: int | None = None,
+):
+    """camembert : distribution des accidents par catégorie de véhicule."""
+    try:
+        def _query_one(y: int) -> pd.DataFrame:
+            # Pour 2024, pas de données vehicule
+            if y == 2024:
+                return pd.DataFrame()
+            
+            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+            table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+            where_parts = ["catv IS NOT NULL"]
+            params = {}
+            if agg_filter in (1, 2):
+                where_parts.append("CAST(agg AS INTEGER) = :agg")
+                params["agg"] = agg_filter
+            if lum_filter in (1, 2, 3, 4, 5):
+                where_parts.append("CAST(lum AS INTEGER) = :lum")
+                params["lum"] = lum_filter
+            if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+                where_parts.append("CAST(atm AS INTEGER) = :atm")
+                params["atm"] = atm_filter
+            if sexe_filter is not None:
+                where_parts.append("CAST(sexe AS INTEGER) = :sexe")
+                params["sexe"] = sexe_filter
+            if trajet_filter is not None:
+                where_parts.append("CAST(trajet AS INTEGER) = :trajet")
+                params["trajet"] = trajet_filter
+            if (birth_year_min is not None) and (birth_year_max is not None):
+                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                params["birth_year_min"] = birth_year_min
+                params["birth_year_max"] = birth_year_max
+            if catv_filter is not None:
+                where_parts.append("CAST(catv AS INTEGER) = :catv")
+                params["catv"] = catv_filter
+            if motor_filter is not None:
+                where_parts.append("CAST(motor AS INTEGER) = :motor")
+                params["motor"] = motor_filter
+            where_clause = " AND ".join(where_parts)
+            sql = f"SELECT catv, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY catv"
+            return query_db(sql, params)
+
+        if isinstance(year, str) and year == "all":
+            dfs = []
+            for y in [2020, 2021, 2022, 2023]:
+                df = _query_one(y)
+                if df is not None and not df.empty:
+                    dfs.append(df)
+            if dfs:
+                df = pd.concat(dfs, ignore_index=True)
+                df = df.groupby("catv", as_index=False).agg({"count": "sum"})
+            else:
+                df = pd.DataFrame()
+        else:
+            df = _query_one(int(year))
+
+        if df is None or df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            return fig
+
+        catv_labels = {
+            1: "vélo", 2: "cyclo <50cm3", 3: "voiturette", 7: "VL seul",
+            10: "VL+caravane", 13: "VL+remorque", 14: "VU 1.5-3.5T",
+            15: "VU >3.5T", 16: "VU+remorque", 17: "PL 3.5-7.5T",
+            18: "PL >7.5T", 19: "PL+remorque", 20: "tracteur seul",
+            21: "tracteur+semi", 30: "scooter immat", 31: "moto >50cm3",
+            32: "scooter <50cm3", 33: "moto >125cm3", 34: "scooter >125cm3",
+            37: "transport commun", 38: "tramway", 40: "quad léger",
+            41: "quad lourd", 42: "cyclomoteur", 50: "EDP motorisé",
+            60: "EDP non motorisé", 99: "autre"
+        }
+        df["catv_label"] = df["catv"].map(catv_labels).fillna("inconnu")
+        df = df.sort_values(by="count", ascending=False).head(10)
+
+        fig = go.Figure(data=[go.Pie(
+            labels=df["catv_label"], values=df["count"],
+            marker={"line": {"color": "#0e111b", "width": 2}},
+            textposition="auto", hovertemplate="<b>%{label}</b><br>accidents: %{value}<br>part: %{percent}<extra></extra>",
+            textinfo="percent", textfont={"size": 12, "color": "#e6e9f2"}
+        )])
+        fig.update_layout(
+            title={"text": "TOP 10 CATÉGORIES VÉHICULE", "x": 0.5, "xanchor": "center", "font": {"size": 16, "color": "#e6e9f2"}},
+            height=420, margin={"l": 20, "r": 20, "t": 80, "b": 20},
+            font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
+            paper_bgcolor="#1a1d2e", plot_bgcolor="#1a1d2e", showlegend=True,
+            legend={"font": {"color": "#e6e9f2"}}
+        )
+        return fig
+    except Exception as err:
+        fig = go.Figure()
+        fig.add_annotation(text=f"erreur: {str(err)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        return fig
+
+
+def _make_motor_pie_chart(
+    year=2023,
+    agg_filter: int | str | None = None,
+    lum_filter: int | str | None = None,
+    atm_filter: int | str | None = None,
+    sexe_filter: int | None = None,
+    trajet_filter: int | None = None,
+    birth_year_min: int | None = None,
+    birth_year_max: int | None = None,
+    catv_filter: int | None = None,
+    motor_filter: int | None = None,
+):
+    """camembert : distribution des accidents par motorisation."""
+    try:
+        def _query_one(y: int) -> pd.DataFrame:
+            # Pour 2024, pas de données vehicule
+            if y == 2024:
+                return pd.DataFrame()
+            
+            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+            table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+            where_parts = ["motor IS NOT NULL"]
+            params = {}
+            if agg_filter in (1, 2):
+                where_parts.append("CAST(agg AS INTEGER) = :agg")
+                params["agg"] = agg_filter
+            if lum_filter in (1, 2, 3, 4, 5):
+                where_parts.append("CAST(lum AS INTEGER) = :lum")
+                params["lum"] = lum_filter
+            if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+                where_parts.append("CAST(atm AS INTEGER) = :atm")
+                params["atm"] = atm_filter
+            if sexe_filter is not None:
+                where_parts.append("CAST(sexe AS INTEGER) = :sexe")
+                params["sexe"] = sexe_filter
+            if trajet_filter is not None:
+                where_parts.append("CAST(trajet AS INTEGER) = :trajet")
+                params["trajet"] = trajet_filter
+            if (birth_year_min is not None) and (birth_year_max is not None):
+                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                params["birth_year_min"] = birth_year_min
+                params["birth_year_max"] = birth_year_max
+            if catv_filter is not None:
+                where_parts.append("CAST(catv AS INTEGER) = :catv")
+                params["catv"] = catv_filter
+            if motor_filter is not None:
+                where_parts.append("CAST(motor AS INTEGER) = :motor")
+                params["motor"] = motor_filter
+            where_clause = " AND ".join(where_parts)
+            sql = f"SELECT motor, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY motor"
+            return query_db(sql, params)
+
+        if isinstance(year, str) and year == "all":
+            dfs = []
+            for y in [2020, 2021, 2022, 2023]:
+                df = _query_one(y)
+                if df is not None and not df.empty:
+                    dfs.append(df)
+            if dfs:
+                df = pd.concat(dfs, ignore_index=True)
+                df = df.groupby("motor", as_index=False).agg({"count": "sum"})
+            else:
+                df = pd.DataFrame()
+        else:
+            df = _query_one(int(year))
+
+        if df is None or df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            return fig
+
+        motor_labels = {
+            1: "hydrocarbure", 2: "électrique", 3: "hydrogène",
+            4: "humaine", 5: "hybride", 6: "GPL", 9: "autre"
+        }
+        df["motor_label"] = df["motor"].map(motor_labels).fillna("inconnu")
+        df = df.sort_values(by="count", ascending=False)
+
+        fig = go.Figure(data=[go.Pie(
+            labels=df["motor_label"], values=df["count"],
+            marker={"line": {"color": "#0e111b", "width": 2}},
+            textposition="auto", hovertemplate="<b>%{label}</b><br>accidents: %{value}<br>part: %{percent}<extra></extra>",
+            textinfo="percent", textfont={"size": 14, "color": "#e6e9f2"}
+        )])
+        fig.update_layout(
+            title={"text": "DISTRIBUTION PAR MOTORISATION", "x": 0.5, "xanchor": "center", "font": {"size": 16, "color": "#e6e9f2"}},
+            height=420, margin={"l": 20, "r": 20, "t": 80, "b": 20},
+            font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
+            paper_bgcolor="#1a1d2e", plot_bgcolor="#1a1d2e", showlegend=True,
+            legend={"font": {"color": "#e6e9f2"}}
+        )
+        return fig
+    except Exception as err:
+        fig = go.Figure()
+        fig.add_annotation(text=f"erreur: {str(err)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        return fig
+
+
+def _make_catv_gender_bar_chart(
+    year=2023,
+    agg_filter: int | str | None = None,
+    lum_filter: int | str | None = None,
+    atm_filter: int | str | None = None,
+    sexe_filter: int | None = None,
+    trajet_filter: int | None = None,
+    birth_year_min: int | None = None,
+    birth_year_max: int | None = None,
+    catv_filter: int | None = None,
+    motor_filter: int | None = None,
+):
+    """barres empilées : proportion H/F par catégorie de véhicule."""
+    try:
+        def _query_one(y: int) -> pd.DataFrame:
+            # Pour 2024, pas de données vehicule
+            if y == 2024:
+                return pd.DataFrame()
+            
+            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+            table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+            where_parts = ["catv IS NOT NULL", "sexe IS NOT NULL"]
+            params = {}
+            if agg_filter in (1, 2):
+                where_parts.append("CAST(agg AS INTEGER) = :agg")
+                params["agg"] = agg_filter
+            if lum_filter in (1, 2, 3, 4, 5):
+                where_parts.append("CAST(lum AS INTEGER) = :lum")
+                params["lum"] = lum_filter
+            if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+                where_parts.append("CAST(atm AS INTEGER) = :atm")
+                params["atm"] = atm_filter
+            if sexe_filter is not None:
+                where_parts.append("CAST(sexe AS INTEGER) = :sexe")
+                params["sexe"] = sexe_filter
+            if trajet_filter is not None:
+                where_parts.append("CAST(trajet AS INTEGER) = :trajet")
+                params["trajet"] = trajet_filter
+            if (birth_year_min is not None) and (birth_year_max is not None):
+                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                params["birth_year_min"] = birth_year_min
+                params["birth_year_max"] = birth_year_max
+            if catv_filter is not None:
+                where_parts.append("CAST(catv AS INTEGER) = :catv")
+                params["catv"] = catv_filter
+            if motor_filter is not None:
+                where_parts.append("CAST(motor AS INTEGER) = :motor")
+                params["motor"] = motor_filter
+            where_clause = " AND ".join(where_parts)
+            sql = f"SELECT catv, sexe, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY catv, sexe"
+            return query_db(sql, params)
+
+        if isinstance(year, str) and year == "all":
+            dfs = []
+            for y in [2020, 2021, 2022, 2023]:
+                df = _query_one(y)
+                if df is not None and not df.empty:
+                    dfs.append(df)
+            if dfs:
+                df = pd.concat(dfs, ignore_index=True)
+                df = df.groupby(["catv", "sexe"], as_index=False).agg({"count": "sum"})
+            else:
+                df = pd.DataFrame()
+        else:
+            df = _query_one(int(year))
+
+        if df is None or df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            return fig
+
+        catv_labels = {
+            1: "vélo", 2: "cyclo <50", 3: "voiturette", 7: "VL seul",
+            10: "VL+caravane", 13: "VL+remorque", 14: "VU 1.5-3.5T",
+            15: "VU >3.5T", 16: "VU+remorque", 17: "PL 3.5-7.5T",
+            18: "PL >7.5T", 19: "PL+remorque", 20: "tracteur",
+            21: "tracteur+semi", 30: "scooter immat", 31: "moto >50",
+            32: "scooter <50", 33: "moto >125", 34: "scooter >125",
+            37: "transport com", 38: "tramway", 40: "quad léger",
+            41: "quad lourd", 42: "cyclomoteur", 50: "EDP motor",
+            60: "EDP non motor", 99: "autre"
+        }
+        
+        # Calculer les totaux par catégorie
+        totals = df.groupby("catv")["count"].sum().reset_index()
+        totals = totals.sort_values("count", ascending=False).head(10)
+        top_catv = totals["catv"].tolist()
+        
+        # Filtrer pour garder seulement le top 10
+        df = df[df["catv"].isin(top_catv)]
+        df["catv_label"] = df["catv"].map(catv_labels).fillna("inconnu")
+        
+        # Pivoter pour avoir sexe en colonnes
+        pivot = df.pivot_table(index="catv_label", columns="sexe", values="count", fill_value=0, aggfunc="sum")
+        
+        # Calculer les pourcentages
+        pivot["total"] = pivot.sum(axis=1)
+        if 1 in pivot.columns:
+            pivot["homme_pct"] = (pivot[1] / pivot["total"] * 100).round(1)
+        else:
+            pivot["homme_pct"] = 0
+        if 2 in pivot.columns:
+            pivot["femme_pct"] = (pivot[2] / pivot["total"] * 100).round(1)
+        else:
+            pivot["femme_pct"] = 0
+        
+        # Trier par total décroissant
+        pivot = pivot.sort_values("total", ascending=True)
+        
+        fig = go.Figure()
+        
+        # Barre femmes
+        fig.add_trace(go.Bar(
+            y=pivot.index,
+            x=pivot["femme_pct"],
+            name="Femme",
+            orientation="h",
+            marker={"color": "#ff57c2"},
+            text=pivot["femme_pct"].apply(lambda x: f"{x:.1f}%"),
+            textposition="inside",
+            textfont={"color": "#ffffff", "size": 11},
+            hovertemplate="<b>%{y}</b><br>Femmes: %{x:.1f}%<extra></extra>"
+        ))
+        
+        # Barre hommes
+        fig.add_trace(go.Bar(
+            y=pivot.index,
+            x=pivot["homme_pct"],
+            name="Homme",
+            orientation="h",
+            marker={"color": "#3ae7ff"},
+            text=pivot["homme_pct"].apply(lambda x: f"{x:.1f}%"),
+            textposition="inside",
+            textfont={"color": "#000000", "size": 11},
+            hovertemplate="<b>%{y}</b><br>Hommes: %{x:.1f}%<extra></extra>"
+        ))
+        
+        fig.update_layout(
+            title={"text": "PROPORTION H/F PAR CATÉGORIE VÉHICULE (TOP 10)", "x": 0.5, "xanchor": "center", "font": {"size": 16, "color": "#e6e9f2"}},
+            barmode="stack",
+            height=500,
+            margin={"l": 150, "r": 20, "t": 80, "b": 60},
+            font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
+            paper_bgcolor="#1a1d2e",
+            plot_bgcolor="#1a1d2e",
+            xaxis={
+                "title": "Pourcentage (%)",
+                "gridcolor": "#2d3548",
+                "range": [0, 100],
+                "tickfont": {"color": "#e6e9f2"}
+            },
+            yaxis={
+                "tickfont": {"color": "#e6e9f2"}
+            },
+            legend={
+                "font": {"color": "#e6e9f2"},
+                "orientation": "h",
+                "yanchor": "bottom",
+                "y": -0.15,
+                "xanchor": "center",
+                "x": 0.5
+            }
+        )
+        return fig
+    except Exception as err:
+        fig = go.Figure()
+        fig.add_annotation(text=f"erreur: {str(err)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        return fig
+
+
+def _make_age_histogram(
+    year=2023,
+    agg_filter: int | str | None = None,
+    lum_filter: int | str | None = None,
+    atm_filter: int | str | None = None,
+    sexe_filter: int | None = None,
+    trajet_filter: int | None = None,
+    birth_year_min: int | None = None,
+    birth_year_max: int | None = None,
+    catv_filter: int | None = None,
+    motor_filter: int | None = None,
+):
+    """histogramme de distribution par année de naissance."""
+    try:
+        def _query_one(y: int) -> pd.DataFrame:
+            # Toujours besoin de usager pour an_nais
+            if y == 2024:
+                table_name = "caract_usager_2024"
+            else:
+                table_name = f"caract_usager_vehicule_{y}"
+            
+            where_parts = ["an_nais IS NOT NULL", "CAST(an_nais AS INTEGER) > 0"]
+            params = {}
+            if agg_filter in (1, 2):
+                where_parts.append("CAST(agg AS INTEGER) = :agg")
+                params["agg"] = agg_filter
+            if lum_filter in (1, 2, 3, 4, 5):
+                where_parts.append("CAST(lum AS INTEGER) = :lum")
+                params["lum"] = lum_filter
+            if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+                where_parts.append("CAST(atm AS INTEGER) = :atm")
+                params["atm"] = atm_filter
+            if sexe_filter is not None:
+                where_parts.append("CAST(sexe AS INTEGER) = :sexe")
+                params["sexe"] = sexe_filter
+            if trajet_filter is not None:
+                where_parts.append("CAST(trajet AS INTEGER) = :trajet")
+                params["trajet"] = trajet_filter
+            if (birth_year_min is not None) and (birth_year_max is not None):
+                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                params["birth_year_min"] = birth_year_min
+                params["birth_year_max"] = birth_year_max
+            if y != 2024:
+                if catv_filter is not None:
+                    where_parts.append("CAST(catv AS INTEGER) = :catv")
+                    params["catv"] = catv_filter
+                if motor_filter is not None:
+                    where_parts.append("CAST(motor AS INTEGER) = :motor")
+                    params["motor"] = motor_filter
+            where_clause = " AND ".join(where_parts)
+            sql = f"SELECT an_nais, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY an_nais"
+            return query_db(sql, params)
+
+        if isinstance(year, str) and year == "all":
+            dfs = []
+            for y in [2020, 2021, 2022, 2023, 2024]:
+                df = _query_one(y)
+                if df is not None and not df.empty:
+                    dfs.append(df)
+            if dfs:
+                df = pd.concat(dfs, ignore_index=True)
+                df = df.groupby("an_nais", as_index=False).agg({"count": "sum"})
+            else:
+                df = pd.DataFrame()
+        else:
+            df = _query_one(int(year))
+
+        if df is None or df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            return fig
+
+        # Convertir an_nais en entier et calculer l'âge
+        df["an_nais"] = pd.to_numeric(df["an_nais"], errors="coerce")
+        df = df.dropna(subset=["an_nais"])
+        df["an_nais"] = df["an_nais"].astype(int)
+        df = df[(df["an_nais"] >= 1900) & (df["an_nais"] <= 2024)]  # Filtrer les années aberrantes
+        df = df.sort_values("an_nais")
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=df["an_nais"],
+            y=df["count"],
+            marker={"color": "#3ae7ff", "line": {"color": "#1a8fa8", "width": 1}},
+            hovertemplate="<b>Année: %{x}</b><br>Accidents: %{y}<extra></extra>"
+        ))
+
+        fig.update_layout(
+            title={"text": "RÉPARTITION DES CONDUCTEURS PAR ANNÉE DE NAISSANCE", "x": 0.5, "xanchor": "center", "font": {"size": 16, "color": "#e6e9f2"}},
+            xaxis={
+                "title": "Année de naissance",
+                "gridcolor": "#2d3548",
+                "tickfont": {"color": "#e6e9f2"},
+                "tickmode": "linear",
+                "dtick": 5,
+            },
+            yaxis={
+                "title": "Nombre d'accidents",
+                "gridcolor": "#2d3548",
+                "tickfont": {"color": "#e6e9f2"},
+            },
+            height=500,
+            margin={"l": 60, "r": 20, "t": 80, "b": 60},
+            font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
+            paper_bgcolor="#1a1d2e",
+            plot_bgcolor="#1a1d2e",
+            bargap=0.1,
+        )
+        return fig
+    except Exception as err:
+        fig = go.Figure()
+        fig.add_annotation(text=f"erreur: {str(err)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
         return fig
 
 
@@ -1431,7 +1919,7 @@ graph_page = html.Div(
                         html.Div(
                             [
                                 html.H3(
-                                    "courbe 2 — distribution par agglomération",
+                                    "courbe 2 — distribution par sexe",
                                     style={
                                         "fontSize": "16px",
                                         "fontWeight": "600",
@@ -1449,6 +1937,94 @@ graph_page = html.Div(
                             ],
                             className="page-card",
                             style={"padding": "20px", "borderTop": "4px solid #ff57c2", "marginTop": "24px"},
+                        ),
+                        html.Div(
+                            [
+                                html.H3(
+                                    "courbe 3 — top catégories véhicule",
+                                    style={
+                                        "fontSize": "16px",
+                                        "fontWeight": "600",
+                                        "color": "#e6e9f2",
+                                        "marginBottom": "16px",
+                                        "borderLeft": "4px solid #f093fb",
+                                        "paddingLeft": "12px",
+                                    },
+                                ),
+                                dcc.Graph(
+                                    id="graph-catv-pie",
+                                    figure=_make_catv_pie_chart(),
+                                    config={"responsive": True, "displayModeBar": True},
+                                ),
+                            ],
+                            className="page-card",
+                            style={"padding": "20px", "borderTop": "4px solid #3ae7ff", "marginTop": "24px"},
+                        ),
+                        html.Div(
+                            [
+                                html.H3(
+                                    "courbe 4 — distribution par motorisation",
+                                    style={
+                                        "fontSize": "16px",
+                                        "fontWeight": "600",
+                                        "color": "#e6e9f2",
+                                        "marginBottom": "16px",
+                                        "borderLeft": "4px solid #f093fb",
+                                        "paddingLeft": "12px",
+                                    },
+                                ),
+                                dcc.Graph(
+                                    id="graph-motor-pie",
+                                    figure=_make_motor_pie_chart(),
+                                    config={"responsive": True, "displayModeBar": True},
+                                ),
+                            ],
+                            className="page-card",
+                            style={"padding": "20px", "borderTop": "4px solid #ff57c2", "marginTop": "24px"},
+                        ),
+                        html.Div(
+                            [
+                                html.H3(
+                                    "courbe 5 — répartition H/F par véhicule",
+                                    style={
+                                        "fontSize": "16px",
+                                        "fontWeight": "600",
+                                        "color": "#e6e9f2",
+                                        "marginBottom": "16px",
+                                        "borderLeft": "4px solid #3ae7ff",
+                                        "paddingLeft": "12px",
+                                    },
+                                ),
+                                dcc.Graph(
+                                    id="graph-catv-gender",
+                                    figure=_make_catv_gender_bar_chart(),
+                                    config={"responsive": True, "displayModeBar": True},
+                                ),
+                            ],
+                            className="page-card",
+                            style={"padding": "20px", "borderTop": "4px solid #3ae7ff", "marginTop": "24px"},
+                        ),
+                        html.Div(
+                            [
+                                html.H3(
+                                    "courbe 6 — répartition des conducteurs par année de naissance",
+                                    style={
+                                        "fontSize": "16px",
+                                        "fontWeight": "600",
+                                        "color": "#e6e9f2",
+                                        "marginBottom": "16px",
+                                        "borderLeft": "4px solid #f093fb",
+                                        "paddingLeft": "12px",
+                                    },
+                                ),
+                                dcc.Graph(
+                                    id="graph-age-histogram",
+                                    figure=_make_age_histogram(),
+                                    config={"responsive": True, "displayModeBar": True},
+                                ),
+                            ],
+                            className="page-card",
+                            style={"padding": "20px", "borderTop": "4px solid #f093fb", "marginTop": "24px"},
                         ),
                     ],
                     style={"flex": "1", "minWidth": "0"},
@@ -1685,7 +2261,14 @@ def update_histogram_year(*_args):
 
 
 @callback(
-    [Output("graph-accidents-heure", "figure"), Output("graph-accidents-pie", "figure")],
+    [
+        Output("graph-accidents-heure", "figure"),
+        Output("graph-accidents-pie", "figure"),
+        Output("graph-catv-pie", "figure"),
+        Output("graph-motor-pie", "figure"),
+        Output("graph-catv-gender", "figure"),
+        Output("graph-age-histogram", "figure"),
+    ],
     [
         Input("filter-annee", "value"),
         Input("filter-agglomeration", "value"),
@@ -1702,7 +2285,7 @@ def update_histogram_year(*_args):
     ],
 )
 def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value, trajet_value, age_range, catv_value, motor_value, _n_h, _n_d, _n_m):
-    """met à jour la courbe temporelle (heures/jours/mois) et le camembert."""
+    """met à jour la courbe temporelle (heures/jours/mois) et les camemberts."""
     ctx = dash.callback_context
     year = annee
 
@@ -1765,6 +2348,54 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value,
             motor_filter=motor_filter,
         ),
         _make_accidents_pie_chart(
+            year,
+            agg_filter=agg_filter,
+            lum_filter=lum_filter,
+            atm_filter=atm_filter,
+            sexe_filter=sexe_filter,
+            trajet_filter=trajet_filter,
+            birth_year_min=birth_year_min,
+            birth_year_max=birth_year_max,
+            catv_filter=catv_filter,
+            motor_filter=motor_filter,
+        ),
+        _make_catv_pie_chart(
+            year,
+            agg_filter=agg_filter,
+            lum_filter=lum_filter,
+            atm_filter=atm_filter,
+            sexe_filter=sexe_filter,
+            trajet_filter=trajet_filter,
+            birth_year_min=birth_year_min,
+            birth_year_max=birth_year_max,
+            catv_filter=catv_filter,
+            motor_filter=motor_filter,
+        ),
+        _make_motor_pie_chart(
+            year,
+            agg_filter=agg_filter,
+            lum_filter=lum_filter,
+            atm_filter=atm_filter,
+            sexe_filter=sexe_filter,
+            trajet_filter=trajet_filter,
+            birth_year_min=birth_year_min,
+            birth_year_max=birth_year_max,
+            catv_filter=catv_filter,
+            motor_filter=motor_filter,
+        ),
+        _make_catv_gender_bar_chart(
+            year,
+            agg_filter=agg_filter,
+            lum_filter=lum_filter,
+            atm_filter=atm_filter,
+            sexe_filter=sexe_filter,
+            trajet_filter=trajet_filter,
+            birth_year_min=birth_year_min,
+            birth_year_max=birth_year_max,
+            catv_filter=catv_filter,
+            motor_filter=motor_filter,
+        ),
+        _make_age_histogram(
             year,
             agg_filter=agg_filter,
             lum_filter=lum_filter,
