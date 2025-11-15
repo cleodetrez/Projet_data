@@ -66,12 +66,8 @@ Au premier lancement, le programme va automatiquement :
 
 Le dashboard est organisé en plusieurs pages accessibles via la barre de navigation en haut de l'écran.
 
-**[SCREENSHOT : Page d'accueil du dashboard avec la barre de navigation]**
-
 #### Page "À propos"
 Cette page présente le contexte du projet, les objectifs de l'analyse et les sources de données utilisées.
-
-**[SCREENSHOT : Page À propos]**
 
 #### Page "Histogramme"
 Cette page affiche la distribution des écarts de vitesse enregistrés par les radars automatiques en France. Lorsque l'on est à 0, alors l'usager roulait à la vitesse maximal autorisée sur la route, lorsque c'est négatif, l'usager roulait en dessous de la limitation de vitesse (resp positif, au dessus).
@@ -79,8 +75,6 @@ Cette page affiche la distribution des écarts de vitesse enregistrés par les r
 **Fonctionnalités :**
 - Sélectionner l'année (2021 ou 2023)
 - Observer la répartition des dépassements de vitesse par tranche
-
-**[SCREENSHOT : Page Histogramme avec graphique des radars]**
 
 #### Page "Carte"
 Visualisation géographique interactive des accidents sur le territoire français.
@@ -92,8 +86,6 @@ Visualisation géographique interactive des accidents sur le territoire françai
 - Sélectionner l'année (2020 à 2024)
 - Observer le nombre d'accidents par zone avec un code couleur (du vert au rouge)
 - Survoler une zone pour voir les détails (nombre exact d'accidents et nom du département/région)
-
-**[SCREENSHOT : Carte des accidents par département]**
 
 #### Page "Graphique"
 Page principale d'analyse avec de nombreux graphiques interactifs et des filtres dynamiques.
@@ -108,8 +100,6 @@ Page principale d'analyse avec de nombreux graphiques interactifs et des filtres
 - **Âge de l'usager** : âge minimum et maximum (l'utilisateur du dashboard choisit)
 - **Catégorie de véhicule** : vélo / cyclo / voiture / VU / PL / transport en commun / train / tramway / 3 roues / EDP / autre
 - **Type de motorisation** : thermique / électrique / hybride / hydrogène / GPL / autre
-
-**[SCREENSHOT : Interface des filtres]**
 
 **Graphiques disponibles :**
 
@@ -139,14 +129,9 @@ Page principale d'analyse avec de nombreux graphiques interactifs et des filtres
    - Couleurs : vert (jeunes) → jaune → orange → rouge (seniors)
    - Permet d'identifier les tranches d'âge les plus à risque
 
-**[SCREENSHOT : Page Graphique complète avec tous les graphiques affichés]**
-
-**[SCREENSHOT : Gros plan sur le graphique de distribution par âge]**
-
 #### Page "Auteurs"
 Informations des auteurs du projet.
 
-**[SCREENSHOT : Page Auteurs]**
 
 ### Interactivité
 
