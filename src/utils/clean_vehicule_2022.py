@@ -1,8 +1,8 @@
 """
 clean_vehicule_2022.py : Nettoie le fichier vehicules 2022
 """
-import pandas as pd
 from pathlib import Path
+from .common_functions import clean_subset_csv
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = ROOT / "data" / "raw"
@@ -15,26 +15,13 @@ def clean_vehicule_2022():
     """Nettoie vehicules-2022.csv : garde Num_Acc, catv, motor."""
     raw_path = RAW_DIR / "vehicules-2022.csv"
     cleaned_path = CLEAN_DIR / "vehicule_clean_2022.csv"
-    
+
     if not raw_path.exists():
         print(f"Fichier brut manquant : {raw_path}")
         return
-    
-    df = pd.read_csv(raw_path, low_memory=False, sep=";")
-    
-    # Garder les colonnes voulues
-    missing = [c for c in KEEP if c not in df.columns]
-    if missing:
-        print(f"Colonnes manquantes dans vehicules 2022 : {missing}")
-        return
-    
-    df = df[KEEP].copy()
-    
-    # Retirer les lignes sans Num_Acc
-    df = df[df["Num_Acc"].notna()]
-    
-    df.to_csv(cleaned_path, index=False)
-    print(f"vehicule_clean_2022.csv cree : {len(df)} lignes")
+
+    rows = clean_subset_csv(raw_path, cleaned_path, KEEP, sep=";")
+    print(f"vehicule_clean_2022.csv cree : {rows} lignes")
 
 if __name__ == "__main__":
     clean_vehicule_2022()

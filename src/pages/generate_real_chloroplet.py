@@ -82,9 +82,9 @@ def get_color_bin(value: int) -> str:
         (200, "#FF6347"),
         (300, "#FF4500"),
     ]
-    for threshold, color in bins:
+    for threshold, bin_color in bins:
         if value <= threshold:
-            return color
+            return bin_color
     return "#FF0000"
 
 
@@ -113,12 +113,12 @@ for idx, feature in enumerate(geojson_data["features"]):
 
         # récupérer le compte d'accidents, 0 si pas présent
         n_acc = int(accident_dict.get(com_code, 0))
-        color = get_color_bin(n_acc)
+        fill_color = get_color_bin(n_acc)
 
         # créer le geojson avec style (sans popup pour plus de vitesse)
         folium.GeoJson(
           data=feature,
-          style_function=lambda _x, c=color: {
+          style_function=lambda _x, c=fill_color: {
             "fillColor": c,
             "color": "#00000000",  # pas de contour
             "weight": 0,

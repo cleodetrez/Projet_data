@@ -6,26 +6,18 @@ from dash import html, dcc, Input, Output, callback
 
 # navbar
 try:
-    from src.pages.navbar import navbar  # si l'appli est lancée en package
+    from src.pages.navbar import navbar
 except ImportError:
-    from pages.navbar import navbar  # repli en import relatif
+    from pages.navbar import navbar
 
-# pages : home
+# pages : home, about, carte
 try:
     from src.pages.home import layout as home_layout
-except ImportError:
-    from pages.home import layout as home_layout
-
-# pages : about
-try:
     from src.pages.about import layout as about_layout
-except ImportError:
-    from pages.about import layout as about_layout
-
-# pages : carte (avec repli si absente)
-try:
     from src.pages.carte import layout as map_layout
 except ImportError:
+    from pages.home import layout as home_layout
+    from pages.about import layout as about_layout
     try:
         from pages.carte import layout as map_layout
     except ImportError:

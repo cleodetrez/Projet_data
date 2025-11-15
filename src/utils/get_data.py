@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Optional
 
 import pandas as pd
 import requests
@@ -112,7 +112,7 @@ HEADERS: Dict[str, str] = {
 
 DATABASE_URL = "sqlite:///bdd/database.db"
 ENGINE = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=ENGINE)
+SESSION_LOCAL = sessionmaker(bind=ENGINE)
 
 
 # ---------------------------------------------------------------------
@@ -191,11 +191,11 @@ def get_caract_2023(_force_download: bool = False) -> pd.DataFrame:
     # Charger le fichier nettoyé si disponible, sinon le fichier brut
     cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2023.csv"
     if cleaned_path.exists():
-        df = pd.read_csv(cleaned_path, low_memory=False)
+        result = pd.read_csv(cleaned_path, low_memory=False)
     else:
-        df = dl_csv(caract_csv_url, "caracteristiques-2023.csv")
-    save_to_db(df, "caracteristiques")
-    return df
+        result = dl_csv(caract_csv_url, "caracteristiques-2023.csv")
+    save_to_db(result, "caracteristiques")
+    return result
 
 
 def get_radar_2023(_force_download: bool = False) -> pd.DataFrame:
@@ -203,63 +203,63 @@ def get_radar_2023(_force_download: bool = False) -> pd.DataFrame:
     # Charger le fichier nettoyé si disponible, sinon le fichier brut
     cleaned_path = raw_dir.parent / "cleaned" / "radars_delta_clean_2023.csv"
     if cleaned_path.exists():
-        df = pd.read_csv(cleaned_path, low_memory=False)
+        result = pd.read_csv(cleaned_path, low_memory=False)
     else:
-        df = dl_csv(radar_csv_url, "radars-2023.csv")
-    save_to_db(df, "radars")
-    return df
+        result = dl_csv(radar_csv_url, "radars-2023.csv")
+    save_to_db(result, "radars")
+    return result
 
 
 def get_caract_2021(_force_download: bool = False) -> pd.DataFrame:
     """charge les caractéristiques 2021 nettoyées."""
     cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2021.csv"
     if cleaned_path.exists():
-        df = pd.read_csv(cleaned_path, low_memory=False)
+        result = pd.read_csv(cleaned_path, low_memory=False)
     else:
-        df = dl_csv(caract_csv_url_2021, "caracteristiques-2021.csv")
-    save_to_db(df, "caracteristiques")
-    return df
+        result = dl_csv(caract_csv_url_2021, "caracteristiques-2021.csv")
+    save_to_db(result, "caracteristiques")
+    return result
 
 
 def get_caract_2020(_force_download: bool = False) -> pd.DataFrame:
     """charge les caractéristiques 2020 nettoyées."""
     cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2020.csv"
     if cleaned_path.exists():
-        df = pd.read_csv(cleaned_path, low_memory=False)
+        result = pd.read_csv(cleaned_path, low_memory=False)
     else:
-        df = dl_csv(caract_csv_url_2020, "caracteristiques-2020.csv")
-    return df
+        result = dl_csv(caract_csv_url_2020, "caracteristiques-2020.csv")
+    return result
 
 
 def get_caract_2022(_force_download: bool = False) -> pd.DataFrame:
     """charge les caractéristiques 2022 nettoyées."""
     cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2022.csv"
     if cleaned_path.exists():
-        df = pd.read_csv(cleaned_path, low_memory=False)
+        result = pd.read_csv(cleaned_path, low_memory=False)
     else:
-        df = dl_csv(caract_csv_url_2022, "caracteristiques-2022.csv")
-    return df
+        result = dl_csv(caract_csv_url_2022, "caracteristiques-2022.csv")
+    return result
 
 
 def get_caract_2024(_force_download: bool = False) -> pd.DataFrame:
     """charge les caractéristiques 2024 nettoyées."""
     cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2024.csv"
     if cleaned_path.exists():
-        df = pd.read_csv(cleaned_path, low_memory=False)
+        result = pd.read_csv(cleaned_path, low_memory=False)
     else:
-        df = dl_csv(caract_csv_url_2024, "caracteristiques-2024.csv")
-    return df
+        result = dl_csv(caract_csv_url_2024, "caracteristiques-2024.csv")
+    return result
 
 
 def get_radar_2021(_force_download: bool = False) -> pd.DataFrame:
     """charge les radars 2021 nettoyés."""
     cleaned_path = raw_dir.parent / "cleaned" / "radars_delta_clean_2021.csv"
     if cleaned_path.exists():
-        df = pd.read_csv(cleaned_path, low_memory=False)
+        result = pd.read_csv(cleaned_path, low_memory=False)
     else:
-        df = dl_csv(radar_csv_url_2021, "radars-2021.csv")
-    save_to_db(df, "radars")
-    return df
+        result = dl_csv(radar_csv_url_2021, "radars-2021.csv")
+    save_to_db(result, "radars")
+    return result
 
 # ------------------------------------------------------------------
 # usager (nouveau jeu de données multi-année)
@@ -270,24 +270,30 @@ def _get_usager_generic(year: int, url: str) -> pd.DataFrame:
     cleaned_path = raw_dir.parent / "cleaned" / f"usager_clean_{year}.csv"
     raw_path = raw_dir / filename
     if cleaned_path.exists():
-        return pd.read_csv(cleaned_path, low_memory=False, sep="," if cleaned_path.suffix == ".csv" else ";")
+        sep = "," if cleaned_path.suffix == ".csv" else ";"
+        return pd.read_csv(cleaned_path, low_memory=False, sep=sep)
     if raw_path.exists():
         return pd.read_csv(raw_path, low_memory=False, sep=";")
     return dl_csv(url, filename)
 
 def get_usager_2020() -> pd.DataFrame:
+    """Retourne le dataset usagers 2020 (brut ou nettoyé si dispo)."""
     return _get_usager_generic(2020, usager_csv_url_2020)
 
 def get_usager_2021() -> pd.DataFrame:
+    """Retourne le dataset usagers 2021 (brut ou nettoyé si dispo)."""
     return _get_usager_generic(2021, usager_csv_url_2021)
 
 def get_usager_2022() -> pd.DataFrame:
+    """Retourne le dataset usagers 2022 (brut ou nettoyé si dispo)."""
     return _get_usager_generic(2022, usager_csv_url_2022)
 
 def get_usager_2023() -> pd.DataFrame:
+    """Retourne le dataset usagers 2023 (brut ou nettoyé si dispo)."""
     return _get_usager_generic(2023, usager_csv_url_2023)
 
 def get_usager_2024() -> pd.DataFrame:
+    """Retourne le dataset usagers 2024 (brut ou nettoyé si dispo)."""
     return _get_usager_generic(2024, usager_csv_url_2024)
 
 # ------------------------------------------------------------------
@@ -299,27 +305,32 @@ def _get_vehicule_generic(year: int, url: str) -> pd.DataFrame:
     cleaned_path = raw_dir.parent / "cleaned" / f"vehicule_clean_{year}.csv"
     raw_path = raw_dir / filename
     if cleaned_path.exists():
-        return pd.read_csv(cleaned_path, low_memory=False, sep="," if cleaned_path.suffix == ".csv" else ";")
+        sep = "," if cleaned_path.suffix == ".csv" else ";"
+        return pd.read_csv(cleaned_path, low_memory=False, sep=sep)
     if raw_path.exists():
         return pd.read_csv(raw_path, low_memory=False, sep=";")
     return dl_csv(url, filename)
 
 def get_vehicule_2020() -> pd.DataFrame:
+    """Retourne le dataset véhicules 2020 (brut ou nettoyé si dispo)."""
     return _get_vehicule_generic(2020, vehicule_csv_url_2020)
 
 def get_vehicule_2021() -> pd.DataFrame:
+    """Retourne le dataset véhicules 2021 (brut ou nettoyé si dispo)."""
     return _get_vehicule_generic(2021, vehicule_csv_url_2021)
 
 def get_vehicule_2022() -> pd.DataFrame:
+    """Retourne le dataset véhicules 2022 (brut ou nettoyé si dispo)."""
     return _get_vehicule_generic(2022, vehicule_csv_url_2022)
 
 def get_vehicule_2023() -> pd.DataFrame:
+    """Retourne le dataset véhicules 2023 (brut ou nettoyé si dispo)."""
     return _get_vehicule_generic(2023, vehicule_csv_url_2023)
 
 
 def query_db(query: str, params: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
     """exécute une requête sql et retourne un dataframe."""
-    with SessionLocal() as session:
+    with SESSION_LOCAL() as session:
         res = session.execute(text(query), params or {})
         return pd.DataFrame(res.fetchall(), columns=res.keys())
 
@@ -345,31 +356,31 @@ if __name__ == "__main__":
             2023: get_caract_2023,
             2024: get_caract_2024,
         }
-        for year, fn in caract_loaders.items():
+        for yr, fn in caract_loaders.items():
             try:
-                df = fn()
+                data = fn()
                 logger.info(
                     "caracteristiques %s : %d lignes, %d colonnes.",
-                    year,
-                    df.shape[0],
-                    df.shape[1],
+                    yr,
+                    data.shape[0],
+                    data.shape[1],
                 )
-            except Exception as e:
-                logger.warning("echec chargement caracteristiques %s : %s", year, e)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning("echec chargement caracteristiques %s : %s", yr, e)
 
         # Chargement multi-année des radars (années disponibles)
         radar_loaders = {2021: get_radar_2021, 2023: get_radar_2023}
-        for year, fn in radar_loaders.items():
+        for yr, fn in radar_loaders.items():
             try:
-                df = fn()
+                data = fn()
                 logger.info(
                     "radars %s : %d lignes, %d colonnes.",
-                    year,
-                    df.shape[0],
-                    df.shape[1],
+                    yr,
+                    data.shape[0],
+                    data.shape[1],
                 )
-            except Exception as e:
-                logger.warning("echec chargement radars %s : %s", year, e)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning("echec chargement radars %s : %s", yr, e)
 
         # Chargement multi-année des usagers
         usager_loaders = {
@@ -379,17 +390,17 @@ if __name__ == "__main__":
             2023: get_usager_2023,
             2024: get_usager_2024,
         }
-        for year, fn in usager_loaders.items():
+        for yr, fn in usager_loaders.items():
             try:
-                df = fn()
+                data = fn()
                 logger.info(
                     "usagers %s : %d lignes, %d colonnes.",
-                    year,
-                    df.shape[0],
-                    df.shape[1],
+                    yr,
+                    data.shape[0],
+                    data.shape[1],
                 )
-            except Exception as e:
-                logger.warning("echec chargement usagers %s : %s", year, e)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning("echec chargement usagers %s : %s", yr, e)
 
         # Chargement multi-année des vehicules
         vehicule_loaders = {
@@ -398,17 +409,17 @@ if __name__ == "__main__":
             2022: get_vehicule_2022,
             2023: get_vehicule_2023,
         }
-        for year, fn in vehicule_loaders.items():
+        for yr, fn in vehicule_loaders.items():
             try:
-                df = fn()
+                data = fn()
                 logger.info(
                     "vehicules %s : %d lignes, %d colonnes.",
-                    year,
-                    df.shape[0],
-                    df.shape[1],
+                    yr,
+                    data.shape[0],
+                    data.shape[1],
                 )
-            except Exception as e:
-                logger.warning("echec chargement vehicules %s : %s", year, e)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning("echec chargement vehicules %s : %s", yr, e)
 
-    except Exception as err:  # garder large ici pour un script cli
+    except Exception as err:  # garder large ici pour un script cli  # pylint: disable=broad-exception-caught
         logger.error("erreur globale get_data : %s", err)

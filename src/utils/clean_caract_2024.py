@@ -71,7 +71,7 @@ def clean_caracteristiques() -> pd.DataFrame:
         rename_map["Accident_Id"] = "acc_id"
     if "lat" in df.columns and "lon" not in df.columns and "long" in df.columns:
         rename_map["long"] = "lon"
-    
+
     df = df.rename(columns=rename_map)
 
     # colonnes finales à garder

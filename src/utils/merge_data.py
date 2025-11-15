@@ -71,7 +71,7 @@ def merge_cleaned_year(
         if "radar" in fpath.name.lower():
             logger.info("ignoré (fichier radars): %s", fpath.name)
             continue
-            
+
         try:
             # essayer d'abord sans spécifier le séparateur (détection auto)
             df = pd.read_csv(fpath, low_memory=False)
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         primary_key="acc_id",
     )
     print(f"saved combined file 2023: {OUT_2023}")
-    
+
     # fusion pour 2021
     OUT_2021 = merge_cleaned_year(
         2021,
@@ -135,4 +135,3 @@ if __name__ == "__main__":
         primary_key="acc_id",
     )
     print(f"saved combined file 2021: {OUT_2021}")
-

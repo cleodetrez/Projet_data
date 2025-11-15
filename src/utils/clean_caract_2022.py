@@ -3,46 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 
-import numpy as np
 import pandas as pd
+
+from .common_functions import parse_hrmn
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data" / "raw" / "caracteristiques-2022.csv"
 OUT = ROOT / "data" / "cleaned" / "caract_clean_2022.csv"
 
-
-def parse_hrmn(value) -> str | float:
-    """normalise une heure HRMN en 'HH:MM' (retourne np.nan si invalide)."""
-    if pd.isna(value):
-        return np.nan
-    s = str(value).strip()
-
-    # cas direct "HH:MM"
-    if ":" in s:
-        parts = s.split(":")
-        if len(parts) >= 2:
-            hh = parts[0].zfill(2)
-            mm = parts[1].zfill(2)
-            return f"{hh}:{mm}"
-
-    # extraire les chiffres et fabriquer HH:MM
-    digits = re.findall(r"\d+", s)
-    token = digits[0] if digits else ""
-    if len(token) >= 4:
-        token = token[-4:]
-    hh = mm = None
-    if len(token) == 4:
-        hh, mm = token[:2], token[2:]
-    elif len(token) == 3:
-        hh, mm = token[0], token[1:]
-    elif len(token) == 2:
-        hh, mm = token, "00"
-    elif len(token) == 1:
-        hh, mm = token, "00"
-
-    return f"{str(hh).zfill(2)}:{str(mm).zfill(2)}" if hh is not None else np.nan
 
 
 def clean_caracteristiques() -> pd.DataFrame:
@@ -71,7 +40,7 @@ def clean_caracteristiques() -> pd.DataFrame:
         rename_map["Accident_Id"] = "acc_id"
     if "lat" in df.columns and "lon" not in df.columns and "long" in df.columns:
         rename_map["long"] = "lon"
-    
+
     df = df.rename(columns=rename_map)
 
     # colonnes finales à garder

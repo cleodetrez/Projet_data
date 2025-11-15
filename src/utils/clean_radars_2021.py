@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 
-import numpy as np
 import pandas as pd
 import pyproj
+from .common_functions import parse_hrmn, parse_position
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW_R = ROOT / "data" / "raw" / "radars-2021.csv"
@@ -17,52 +16,6 @@ PROJECT = pyproj.Transformer.from_crs(
     "EPSG:2154", "EPSG:4326", always_xy=True
 )
 
-
-def parse_hrmn(value) -> str | float:
-    """normalise une heure HRMN en 'HH:MM' (retourne np.nan si invalide)."""
-    if pd.isna(value):
-        return np.nan
-    s = str(value).strip()
-
-    # cas direct "HH:MM"
-    if ":" in s:
-        parts = s.split(":")
-        if len(parts) >= 2:
-            hh = parts[0].zfill(2)
-            mm = parts[1].zfill(2)
-            return f"{hh}:{mm}"
-
-    # extraire les chiffres et fabriquer HH:MM
-    digits = re.findall(r"\d+", s)
-    token = digits[0] if digits else ""
-    if len(token) >= 4:
-        token = token[-4:]
-    hh = mm = None
-    if len(token) == 4:
-        hh, mm = token[:2], token[2:]
-    elif len(token) == 3:
-        hh, mm = token[0], token[1:]
-    elif len(token) == 2:
-        hh, mm = token, "00"
-    elif len(token) == 1:
-        hh, mm = token, "00"
-
-    return f"{str(hh).zfill(2)}:{str(mm).zfill(2)}" if hh is not None else np.nan
-
-
-def parse_position(p) -> tuple[float | None, float | None]:
-    """extrait (x, y) flottants d'une chaîne, sinon (None, None)."""
-    if pd.isna(p):
-        return (None, None)
-    if isinstance(p, str):
-        s = p.strip()
-        nums = re.findall(r"[-+]?\d*\.?\d+", s)
-        if len(nums) >= 2:
-            try:
-                return float(nums[0]), float(nums[1])
-            except ValueError:
-                return (None, None)
-    return (None, None)
 
 
 def enrich_datetime(df: pd.DataFrame) -> pd.DataFrame:

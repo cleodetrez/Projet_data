@@ -27,40 +27,128 @@ REGIONS_GEOJSON_PATH = ROOT / "regions-version-simplifiee.geojson"
 try:
     from src.utils.get_data import query_db  # type: ignore
 except ImportError:  # pragma: no cover
+
     def query_db(*_args, **_kwargs):
         raise ImportError("src.utils.get_data introuvable")
+
 
 # mapping département -> région (codes régions 2016)
 DEPT_TO_REGION: dict[str, str] = {
     # Auvergne-Rhône-Alpes (84)
-    "01": "84", "03": "84", "07": "84", "15": "84", "26": "84", "38": "84",
-    "42": "84", "43": "84", "63": "84", "69": "84", "73": "84", "74": "84",
+    "01": "84",
+    "03": "84",
+    "07": "84",
+    "15": "84",
+    "26": "84",
+    "38": "84",
+    "42": "84",
+    "43": "84",
+    "63": "84",
+    "69": "84",
+    "73": "84",
+    "74": "84",
     # Bourgogne-Franche-Comté (27)
-    "21": "27", "25": "27", "39": "27", "58": "27", "70": "27", "71": "27", "89": "27", "90": "27",
+    "21": "27",
+    "25": "27",
+    "39": "27",
+    "58": "27",
+    "70": "27",
+    "71": "27",
+    "89": "27",
+    "90": "27",
     # Bretagne (53)
-    "22": "53", "29": "53", "35": "53", "56": "53",
+    "22": "53",
+    "29": "53",
+    "35": "53",
+    "56": "53",
     # Centre-Val de Loire (24)
-    "18": "24", "28": "24", "36": "24", "37": "24", "41": "24", "45": "24",
+    "18": "24",
+    "28": "24",
+    "36": "24",
+    "37": "24",
+    "41": "24",
+    "45": "24",
     # Corse (94)
-    "2A": "94", "2B": "94",
+    "2A": "94",
+    "2B": "94",
     # Grand Est (44)
-    "08": "44", "10": "44", "51": "44", "52": "44", "54": "44", "55": "44", "57": "44", "67": "44", "68": "44", "88": "44",
+    "08": "44",
+    "10": "44",
+    "51": "44",
+    "52": "44",
+    "54": "44",
+    "55": "44",
+    "57": "44",
+    "67": "44",
+    "68": "44",
+    "88": "44",
     # Hauts-de-France (32)
-    "02": "32", "59": "32", "60": "32", "62": "32", "80": "32",
+    "02": "32",
+    "59": "32",
+    "60": "32",
+    "62": "32",
+    "80": "32",
     # Île-de-France (11)
-    "75": "11", "77": "11", "78": "11", "91": "11", "92": "11", "93": "11", "94": "11", "95": "11",
+    "75": "11",
+    "77": "11",
+    "78": "11",
+    "91": "11",
+    "92": "11",
+    "93": "11",
+    "94": "11",
+    "95": "11",
     # Normandie (28)
-    "14": "28", "27": "28", "50": "28", "61": "28", "76": "28",
+    "14": "28",
+    "27": "28",
+    "50": "28",
+    "61": "28",
+    "76": "28",
     # Nouvelle-Aquitaine (75)
-    "16": "75", "17": "75", "19": "75", "23": "75", "24": "75", "33": "75", "40": "75", "47": "75", "64": "75", "79": "75", "86": "75", "87": "75",
+    "16": "75",
+    "17": "75",
+    "19": "75",
+    "23": "75",
+    "24": "75",
+    "33": "75",
+    "40": "75",
+    "47": "75",
+    "64": "75",
+    "79": "75",
+    "86": "75",
+    "87": "75",
     # Occitanie (76)
-    "09": "76", "11": "76", "12": "76", "30": "76", "31": "76", "32": "76", "34": "76", "46": "76", "48": "76", "65": "76", "66": "76", "81": "76", "82": "76",
+    "09": "76",
+    "11": "76",
+    "12": "76",
+    "30": "76",
+    "31": "76",
+    "32": "76",
+    "34": "76",
+    "46": "76",
+    "48": "76",
+    "65": "76",
+    "66": "76",
+    "81": "76",
+    "82": "76",
     # Pays de la Loire (52)
-    "44": "52", "49": "52", "53": "52", "72": "52", "85": "52",
+    "44": "52",
+    "49": "52",
+    "53": "52",
+    "72": "52",
+    "85": "52",
     # Provence-Alpes-Côte d'Azur (93)
-    "04": "93", "05": "93", "06": "93", "13": "93", "83": "93", "84": "93",
+    "04": "93",
+    "05": "93",
+    "06": "93",
+    "13": "93",
+    "83": "93",
+    "84": "93",
     # Outre-mer
-    "971": "01", "972": "02", "973": "03", "974": "04", "976": "06",
+    "971": "01",
+    "972": "02",
+    "973": "03",
+    "974": "04",
+    "976": "06",
 }
 
 # noms des régions (codes 2016)
@@ -87,38 +175,114 @@ REGION_NAMES: dict[str, str] = {
 
 # noms des départements
 DEPT_NAMES: dict[str, str] = {
-    "01": "Ain", "02": "Aisne", "03": "Allier", "04": "Alpes-de-Haute-Provence",
-    "05": "Hautes-Alpes", "06": "Alpes-Maritimes", "07": "Ardèche", "08": "Ardennes",
-    "09": "Ariège", "10": "Aube", "11": "Aude", "12": "Aveyron",
-    "13": "Bouches-du-Rhône", "14": "Calvados", "15": "Cantal", "16": "Charente",
-    "17": "Charente-Maritime", "18": "Cher", "19": "Corrèze", "21": "Côte-d'Or",
-    "22": "Côtes-d'Armor", "23": "Creuse", "24": "Dordogne", "25": "Doubs",
-    "26": "Drôme", "27": "Eure", "28": "Eure-et-Loir", "29": "Finistère",
-    "2A": "Corse-du-Sud", "2B": "Haute-Corse", "30": "Gard", "31": "Haute-Garonne",
-    "32": "Gers", "33": "Gironde", "34": "Hérault", "35": "Ille-et-Vilaine",
-    "36": "Indre", "37": "Indre-et-Loire", "38": "Isère", "39": "Jura",
-    "40": "Landes", "41": "Loir-et-Cher", "42": "Loire", "43": "Haute-Loire",
-    "44": "Loire-Atlantique", "45": "Loiret", "46": "Lot", "47": "Lot-et-Garonne",
-    "48": "Lozère", "49": "Maine-et-Loire", "50": "Manche", "51": "Marne",
-    "52": "Haute-Marne", "53": "Mayenne", "54": "Meurthe-et-Moselle", "55": "Meuse",
-    "56": "Morbihan", "57": "Moselle", "58": "Nièvre", "59": "Nord",
-    "60": "Oise", "61": "Orne", "62": "Pas-de-Calais", "63": "Puy-de-Dôme",
-    "64": "Pyrénées-Atlantiques", "65": "Hautes-Pyrénées", "66": "Pyrénées-Orientales",
-    "67": "Bas-Rhin", "68": "Haut-Rhin", "69": "Rhône", "70": "Haute-Saône",
-    "71": "Saône-et-Loire", "72": "Sarthe", "73": "Savoie", "74": "Haute-Savoie",
-    "75": "Paris", "76": "Seine-Maritime", "77": "Seine-et-Marne", "78": "Yvelines",
-    "79": "Deux-Sèvres", "80": "Somme", "81": "Tarn", "82": "Tarn-et-Garonne",
-    "83": "Var", "84": "Vaucluse", "85": "Vendée", "86": "Vienne",
-    "87": "Haute-Vienne", "88": "Vosges", "89": "Yonne", "90": "Territoire de Belfort",
-    "91": "Essonne", "92": "Hauts-de-Seine", "93": "Seine-Saint-Denis", "94": "Val-de-Marne",
-    "95": "Val-d'Oise", "971": "Guadeloupe", "972": "Martinique", "973": "Guyane",
-    "974": "La Réunion", "976": "Mayotte",
+    "01": "Ain",
+    "02": "Aisne",
+    "03": "Allier",
+    "04": "Alpes-de-Haute-Provence",
+    "05": "Hautes-Alpes",
+    "06": "Alpes-Maritimes",
+    "07": "Ardèche",
+    "08": "Ardennes",
+    "09": "Ariège",
+    "10": "Aube",
+    "11": "Aude",
+    "12": "Aveyron",
+    "13": "Bouches-du-Rhône",
+    "14": "Calvados",
+    "15": "Cantal",
+    "16": "Charente",
+    "17": "Charente-Maritime",
+    "18": "Cher",
+    "19": "Corrèze",
+    "21": "Côte-d'Or",
+    "22": "Côtes-d'Armor",
+    "23": "Creuse",
+    "24": "Dordogne",
+    "25": "Doubs",
+    "26": "Drôme",
+    "27": "Eure",
+    "28": "Eure-et-Loir",
+    "29": "Finistère",
+    "2A": "Corse-du-Sud",
+    "2B": "Haute-Corse",
+    "30": "Gard",
+    "31": "Haute-Garonne",
+    "32": "Gers",
+    "33": "Gironde",
+    "34": "Hérault",
+    "35": "Ille-et-Vilaine",
+    "36": "Indre",
+    "37": "Indre-et-Loire",
+    "38": "Isère",
+    "39": "Jura",
+    "40": "Landes",
+    "41": "Loir-et-Cher",
+    "42": "Loire",
+    "43": "Haute-Loire",
+    "44": "Loire-Atlantique",
+    "45": "Loiret",
+    "46": "Lot",
+    "47": "Lot-et-Garonne",
+    "48": "Lozère",
+    "49": "Maine-et-Loire",
+    "50": "Manche",
+    "51": "Marne",
+    "52": "Haute-Marne",
+    "53": "Mayenne",
+    "54": "Meurthe-et-Moselle",
+    "55": "Meuse",
+    "56": "Morbihan",
+    "57": "Moselle",
+    "58": "Nièvre",
+    "59": "Nord",
+    "60": "Oise",
+    "61": "Orne",
+    "62": "Pas-de-Calais",
+    "63": "Puy-de-Dôme",
+    "64": "Pyrénées-Atlantiques",
+    "65": "Hautes-Pyrénées",
+    "66": "Pyrénées-Orientales",
+    "67": "Bas-Rhin",
+    "68": "Haut-Rhin",
+    "69": "Rhône",
+    "70": "Haute-Saône",
+    "71": "Saône-et-Loire",
+    "72": "Sarthe",
+    "73": "Savoie",
+    "74": "Haute-Savoie",
+    "75": "Paris",
+    "76": "Seine-Maritime",
+    "77": "Seine-et-Marne",
+    "78": "Yvelines",
+    "79": "Deux-Sèvres",
+    "80": "Somme",
+    "81": "Tarn",
+    "82": "Tarn-et-Garonne",
+    "83": "Var",
+    "84": "Vaucluse",
+    "85": "Vendée",
+    "86": "Vienne",
+    "87": "Haute-Vienne",
+    "88": "Vosges",
+    "89": "Yonne",
+    "90": "Territoire de Belfort",
+    "91": "Essonne",
+    "92": "Hauts-de-Seine",
+    "93": "Seine-Saint-Denis",
+    "94": "Val-de-Marne",
+    "95": "Val-d'Oise",
+    "971": "Guadeloupe",
+    "972": "Martinique",
+    "973": "Guyane",
+    "974": "La Réunion",
+    "976": "Mayotte",
 }
 
 
 # ============================================================================
 # utilitaires dynamiques
 # ============================================================================
+
 
 def _available_years() -> list[int]:
     """Retourne la liste des années disponibles selon les tables 'caracteristiques_YYYY'."""
@@ -140,9 +304,7 @@ def _available_years() -> list[int]:
 def _available_radar_years() -> list[int]:
     """Retourne la liste des années avec données radars disponibles."""
     try:
-        df = query_db(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'radars_%'"
-        )
+        df = query_db("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'radars_%'")
         years: list[int] = []
         for name in df["name"] if "name" in df.columns else []:  # type: ignore
             m = re.match(r"radars_(\d{4})$", str(name))
@@ -197,6 +359,7 @@ def _compute_radar_delta_bounds() -> tuple[float, float]:
 # composants des pages
 # ============================================================================
 
+
 def _make_departments_choropleth(year=2023):
     """carte choroplèthe par département."""
     try:
@@ -204,10 +367,7 @@ def _make_departments_choropleth(year=2023):
             geojson = json.load(f)
 
         table_name = f"caracteristiques_{year}"
-        sql = (
-            f"SELECT dep AS dept, COUNT(*) AS accidents "
-            f"FROM {table_name} GROUP BY dep"
-        )
+        sql = f"SELECT dep AS dept, COUNT(*) AS accidents " f"FROM {table_name} GROUP BY dep"
         df = query_db(sql)
 
         if df is None or df.empty:
@@ -303,7 +463,7 @@ def _make_communes_choropleth(year=2023):
 
         # Convertir code commune en string et padding
         df["code_commune"] = df["code_commune"].astype(str).str.zfill(5)
-        
+
         # Mapping des arrondissements vers codes INSEE commune
         # Paris: 75101-75120 -> 75056
         # Lyon: 69381-69389 -> 69123
@@ -315,12 +475,10 @@ def _make_communes_choropleth(year=2023):
             arrondissement_map[f"6938{i}"] = "69123"
         for i in range(1, 17):  # Marseille 16 arrondissements
             arrondissement_map[f"132{i:02d}"] = "13055"
-        
+
         # Appliquer le mapping
-        df["code_commune"] = df["code_commune"].apply(
-            lambda x: arrondissement_map.get(x, x)
-        )
-        
+        df["code_commune"] = df["code_commune"].apply(lambda x: arrondissement_map.get(x, x))
+
         # Agréger les accidents après transformation (pour grouper les arrondissements)
         df = df.groupby("code_commune", as_index=False).agg({"accidents": "sum"})
 
@@ -359,26 +517,40 @@ def _make_communes_choropleth(year=2023):
             showarrow=False,
         )
         return fig
+
+
 def _make_regions_choropleth(year=2023):
     """carte choroplèthe par région (agrégation par code région 2016)."""
     try:
         if not REGIONS_GEOJSON_PATH.exists():
             fig = go.Figure()
-            fig.add_annotation(text="fichier regions geojson manquant", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+            fig.add_annotation(
+                text="fichier regions geojson manquant",
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+            )
             return fig
 
         with REGIONS_GEOJSON_PATH.open("r", encoding="utf-8") as f:
             geojson = json.load(f)
 
         table_name = f"caracteristiques_{year}"
-        sql = (
-            f"SELECT dep AS dept, COUNT(*) AS accidents FROM {table_name} GROUP BY dep"
-        )
+        sql = f"SELECT dep AS dept, COUNT(*) AS accidents FROM {table_name} GROUP BY dep"
         df = query_db(sql)
 
         if df is None or df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="aucune donnée disponible", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+            fig.add_annotation(
+                text="aucune donnée disponible",
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+            )
             return fig
 
         df["dept"] = df["dept"].astype(str).str.strip().str.upper().str.zfill(2)
@@ -389,7 +561,9 @@ def _make_regions_choropleth(year=2023):
             return DEPT_TO_REGION.get(dep)
 
         df["region"] = df["dept"].apply(_map_region)
-        df = df.dropna(subset=["region"]).groupby("region", as_index=False).agg({"accidents": "sum"})
+        df = (
+            df.dropna(subset=["region"]).groupby("region", as_index=False).agg({"accidents": "sum"})
+        )
         df["nom"] = df["region"].map(REGION_NAMES).fillna(df["region"])
 
         fig = px.choropleth(
@@ -418,17 +592,22 @@ def _make_regions_choropleth(year=2023):
     except Exception as err:
         print(f"erreur carte régions : {err}")
         fig = go.Figure()
-        fig.add_annotation(text=f"erreur : {str(err)[:100]}", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        fig.add_annotation(
+            text=f"erreur : {str(err)[:100]}",
+            x=0.5,
+            y=0.5,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+        )
         return fig
-
-    
 
 
 def _make_speed_histogram(year=2023):
     """histogramme des écarts de vitesse."""
     try:
         table_name = f"radars_{year}"
-        
+
         sql = (
             f"SELECT (mesure - limite) AS delta_v "
             f"FROM {table_name} "
@@ -552,9 +731,7 @@ def _make_speed_histogram(year=2023):
             marker_line_width=1,
             marker_color="#3ae7ff",
             hovertemplate=(
-                "<b>écart:</b> %{x:.1f} km/h<br>"
-                "<b>mesures:</b> %{y}<br>"
-                "<extra></extra>"
+                "<b>écart:</b> %{x:.1f} km/h<br>" "<b>mesures:</b> %{y}<br>" "<extra></extra>"
             ),
         )
         fig.update_xaxes(
@@ -566,9 +743,7 @@ def _make_speed_histogram(year=2023):
             zerolinecolor="rgba(255, 87, 194, 0.35)",
             range=[x_lo, x_hi],
         )
-        fig.update_yaxes(
-            showgrid=True, gridwidth=1, gridcolor="rgba(255, 255, 255, 0.06)"
-        )
+        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor="rgba(255, 255, 255, 0.06)")
         return fig
 
     except Exception as err:  # type: ignore[used-before-def]
@@ -599,9 +774,9 @@ def _make_time_series(
     catv_filter: int | None = None,
     motor_filter: int | None = None,
 ):
-    """courbe : évolution du nombre d'accidents par heure/jour/mois.
+    """courbe : évolution du nombre d'accidents par heure/jour/mois/jour de semaine.
 
-    unit: "hour" | "day" | "month"
+    unit: "hour" | "day" | "month" | "weekday"
     year: 2020..2024 | "all" pour agréger plusieurs années.
     agg_filter: 1 (agglomération) | 2 (hors agglomération)
     lum_filter: 1-5 (conditions de luminosité)
@@ -612,11 +787,24 @@ def _make_time_series(
         unit = unit.lower()
 
         def _query_one(y: int) -> pd.DataFrame:
-            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+            use_join = any(
+                v is not None
+                for v in (
+                    sexe_filter,
+                    trajet_filter,
+                    birth_year_min,
+                    birth_year_max,
+                    catv_filter,
+                    motor_filter,
+                )
+            )
             # Pour 2024, pas de vehicule, utiliser caract_usager si filtres usager actifs
             if y == 2024:
                 # Ignorer les filtres vehicule pour 2024
-                use_join_usager = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max))
+                use_join_usager = any(
+                    v is not None
+                    for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max)
+                )
                 table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
             else:
                 table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
@@ -629,9 +817,16 @@ def _make_time_series(
             elif unit == "day":
                 select_x = "CAST(jour AS INTEGER) AS x"
                 where_parts.append("jour IS NOT NULL")
-            else:  # month
+            elif unit == "month":
                 select_x = "CAST(mois AS INTEGER) AS x"
                 where_parts.append("mois IS NOT NULL")
+            elif unit == "weekday":
+                # On récupère jour et mois, puis on calcule le jour de semaine côté Python
+                select_x = None
+                where_parts.extend(["jour IS NOT NULL", "mois IS NOT NULL"])
+            else:
+                select_x = "CAST(SUBSTR(heure,1,2) AS INTEGER) AS x"
+                where_parts.append("heure IS NOT NULL")
 
             if agg_filter in (1, 2):
                 where_parts.append("CAST(agg AS INTEGER) = :agg")
@@ -652,7 +847,9 @@ def _make_time_series(
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
-                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                where_parts.append(
+                    "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
+                )
                 params["birth_year_min"] = birth_year_min
                 params["birth_year_max"] = birth_year_max
 
@@ -665,12 +862,36 @@ def _make_time_series(
                 params["motor"] = motor_filter
 
             where_clause = " AND ".join(where_parts) if where_parts else "1=1"
-            sql = (
-                f"SELECT {select_x}, COUNT(*) AS accidents "
-                f"FROM {table_name} WHERE {where_clause} "
-                f"GROUP BY x ORDER BY x"
-            )
-            return query_db(sql, params)
+            if unit == "weekday":
+                sql = (
+                    f"SELECT CAST(mois AS INTEGER) AS mois, CAST(jour AS INTEGER) AS jour, COUNT(*) AS accidents "
+                    f"FROM {table_name} WHERE {where_clause} "
+                    f"GROUP BY mois, jour ORDER BY mois, jour"
+                )
+                df = query_db(sql, params)
+                if df is None or df.empty:
+                    return df
+                # Calculer le jour de semaine (lundi=1 .. dimanche=7)
+                df["mois"] = pd.to_numeric(df["mois"], errors="coerce")
+                df["jour"] = pd.to_numeric(df["jour"], errors="coerce")
+                df = df.dropna(subset=["mois", "jour"]).copy()
+                df["mois"] = df["mois"].astype(int)
+                df["jour"] = df["jour"].astype(int)
+                # Construire des dates avec l'année courante y
+                dates = pd.to_datetime(
+                    {"year": y, "month": df["mois"], "day": df["jour"]}, errors="coerce"
+                )
+                dow = dates.dt.dayofweek  # 0=lundi .. 6=dimanche
+                df = df.assign(x=(dow + 1))  # 1..7
+                df = df.groupby("x", as_index=False).agg({"accidents": "sum"})
+                return df
+            else:
+                sql = (
+                    f"SELECT {select_x}, COUNT(*) AS accidents "
+                    f"FROM {table_name} WHERE {where_clause} "
+                    f"GROUP BY x ORDER BY x"
+                )
+                return query_db(sql, params)
 
         show_leg = False
         overlay_sets: list[tuple[int, pd.DataFrame]] = []
@@ -701,16 +922,19 @@ def _make_time_series(
             "hour": "évolution du nombre d'accidents par heure",
             "day": "évolution du nombre d'accidents par jour",
             "month": "évolution du nombre d'accidents par mois",
+            "weekday": "évolution du nombre d'accidents par jour de semaine",
         }
         x_title_map = {
             "hour": "heure (0-23)",
             "day": "jour (1-31)",
             "month": "mois (1-12)",
+            "weekday": "jour de semaine (1=lundi .. 7=dimanche)",
         }
         x_range_map = {
             "hour": [-0.5, 23.5],
             "day": [0.5, 31.5],
             "month": [0.5, 12.5],
+            "weekday": [0.5, 7.5],
         }
 
         fig = go.Figure()
@@ -739,9 +963,7 @@ def _make_time_series(
                     # area fill only for single series to avoid stacking confusion
                     fill="tozeroy" if not show_leg else None,
                     fillcolor=("rgba(58, 231, 255, 0.12)" if not show_leg else None),
-                    hovertemplate=(
-                        f"<b>année {y}</b><br>%{{x}} → <b>%{{y}}</b><extra></extra>"
-                    ),
+                    hovertemplate=(f"<b>année {y}</b><br>%{{x}} → <b>%{{y}}</b><extra></extra>"),
                 )
             )
         fig.update_layout(
@@ -774,6 +996,13 @@ def _make_time_series(
             linewidth=2,
             linecolor="#ddd",
         )
+        if unit == "weekday":
+            fig.update_xaxes(
+                tickmode="array",
+                tickvals=[1, 2, 3, 4, 5, 6, 7],
+                ticktext=["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"],
+                range=[0.5, 7.5],
+            )
         fig.update_yaxes(
             showgrid=True,
             gridwidth=1,
@@ -815,12 +1044,26 @@ def _make_accidents_pie_chart(
     year: 2020..2024 | "all" pour agréger plusieurs années.
     """
     try:
+
         def _query_one(y: int) -> pd.DataFrame:
-            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+            use_join = any(
+                v is not None
+                for v in (
+                    sexe_filter,
+                    trajet_filter,
+                    birth_year_min,
+                    birth_year_max,
+                    catv_filter,
+                    motor_filter,
+                )
+            )
             # Pour 2024, pas de vehicule, utiliser caract_usager si filtres usager actifs
             if y == 2024:
                 # Ignorer les filtres vehicule pour 2024
-                use_join_usager = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max))
+                use_join_usager = any(
+                    v is not None
+                    for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max)
+                )
                 table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
             else:
                 table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
@@ -842,7 +1085,9 @@ def _make_accidents_pie_chart(
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
-                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                where_parts.append(
+                    "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
+                )
                 params["birth_year_min"] = birth_year_min
                 params["birth_year_max"] = birth_year_max
             if catv_filter is not None:
@@ -952,12 +1197,23 @@ def _make_catv_pie_chart(
 ):
     """camembert : distribution des accidents par catégorie de véhicule."""
     try:
+
         def _query_one(y: int) -> pd.DataFrame:
             # Pour 2024, pas de données vehicule
             if y == 2024:
                 return pd.DataFrame()
-            
-            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+
+            use_join = any(
+                v is not None
+                for v in (
+                    sexe_filter,
+                    trajet_filter,
+                    birth_year_min,
+                    birth_year_max,
+                    catv_filter,
+                    motor_filter,
+                )
+            )
             table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
             where_parts = ["catv IS NOT NULL"]
             params = {}
@@ -977,7 +1233,9 @@ def _make_catv_pie_chart(
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
-                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                where_parts.append(
+                    "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
+                )
                 params["birth_year_min"] = birth_year_min
                 params["birth_year_max"] = birth_year_max
             if catv_filter is not None:
@@ -1006,40 +1264,87 @@ def _make_catv_pie_chart(
 
         if df is None or df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            fig.add_annotation(
+                text="aucune donnée disponible",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+            )
             return fig
 
         catv_labels = {
-            1: "vélo", 2: "cyclo <50cm3", 3: "voiturette", 7: "VL seul",
-            10: "VL+caravane", 13: "VL+remorque", 14: "VU 1.5-3.5T",
-            15: "VU >3.5T", 16: "VU+remorque", 17: "PL 3.5-7.5T",
-            18: "PL >7.5T", 19: "PL+remorque", 20: "tracteur seul",
-            21: "tracteur+semi", 30: "scooter immat", 31: "moto >50cm3",
-            32: "scooter <50cm3", 33: "moto >125cm3", 34: "scooter >125cm3",
-            37: "transport commun", 38: "tramway", 40: "quad léger",
-            41: "quad lourd", 42: "cyclomoteur", 50: "EDP motorisé",
-            60: "EDP non motorisé", 99: "autre"
+            1: "vélo",
+            2: "cyclo <50cm3",
+            3: "voiturette",
+            7: "VL seul",
+            10: "VL+caravane",
+            13: "VL+remorque",
+            14: "VU 1.5-3.5T",
+            15: "VU >3.5T",
+            16: "VU+remorque",
+            17: "PL 3.5-7.5T",
+            18: "PL >7.5T",
+            19: "PL+remorque",
+            20: "tracteur seul",
+            21: "tracteur+semi",
+            30: "scooter immat",
+            31: "moto >50cm3",
+            32: "scooter <50cm3",
+            33: "moto >125cm3",
+            34: "scooter >125cm3",
+            37: "transport commun",
+            38: "tramway",
+            40: "quad léger",
+            41: "quad lourd",
+            42: "cyclomoteur",
+            50: "EDP motorisé",
+            60: "EDP non motorisé",
+            99: "autre",
         }
         df["catv_label"] = df["catv"].map(catv_labels).fillna("inconnu")
         df = df.sort_values(by="count", ascending=False).head(10)
 
-        fig = go.Figure(data=[go.Pie(
-            labels=df["catv_label"], values=df["count"],
-            marker={"line": {"color": "#0e111b", "width": 2}},
-            textposition="auto", hovertemplate="<b>%{label}</b><br>accidents: %{value}<br>part: %{percent}<extra></extra>",
-            textinfo="percent", textfont={"size": 12, "color": "#e6e9f2"}
-        )])
+        fig = go.Figure(
+            data=[
+                go.Pie(
+                    labels=df["catv_label"],
+                    values=df["count"],
+                    marker={"line": {"color": "#0e111b", "width": 2}},
+                    textposition="auto",
+                    hovertemplate="<b>%{label}</b><br>accidents: %{value}<br>part: %{percent}<extra></extra>",
+                    textinfo="percent",
+                    textfont={"size": 12, "color": "#e6e9f2"},
+                )
+            ]
+        )
         fig.update_layout(
-            title={"text": "TOP 10 CATÉGORIES VÉHICULE", "x": 0.5, "xanchor": "center", "font": {"size": 16, "color": "#e6e9f2"}},
-            height=420, margin={"l": 20, "r": 20, "t": 80, "b": 20},
+            title={
+                "text": "TOP 10 CATÉGORIES VÉHICULE",
+                "x": 0.5,
+                "xanchor": "center",
+                "font": {"size": 16, "color": "#e6e9f2"},
+            },
+            height=420,
+            margin={"l": 20, "r": 20, "t": 80, "b": 20},
             font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
-            paper_bgcolor="#1a1d2e", plot_bgcolor="#1a1d2e", showlegend=True,
-            legend={"font": {"color": "#e6e9f2"}}
+            paper_bgcolor="#1a1d2e",
+            plot_bgcolor="#1a1d2e",
+            showlegend=True,
+            legend={"font": {"color": "#e6e9f2"}},
         )
         return fig
     except Exception as err:
         fig = go.Figure()
-        fig.add_annotation(text=f"erreur: {str(err)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        fig.add_annotation(
+            text=f"erreur: {str(err)[:100]}",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
         return fig
 
 
@@ -1057,12 +1362,23 @@ def _make_motor_pie_chart(
 ):
     """camembert : distribution des accidents par motorisation."""
     try:
+
         def _query_one(y: int) -> pd.DataFrame:
             # Pour 2024, pas de données vehicule
             if y == 2024:
                 return pd.DataFrame()
-            
-            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+
+            use_join = any(
+                v is not None
+                for v in (
+                    sexe_filter,
+                    trajet_filter,
+                    birth_year_min,
+                    birth_year_max,
+                    catv_filter,
+                    motor_filter,
+                )
+            )
             table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
             where_parts = ["motor IS NOT NULL"]
             params = {}
@@ -1082,7 +1398,9 @@ def _make_motor_pie_chart(
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
-                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                where_parts.append(
+                    "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
+                )
                 params["birth_year_min"] = birth_year_min
                 params["birth_year_max"] = birth_year_max
             if catv_filter is not None:
@@ -1111,33 +1429,67 @@ def _make_motor_pie_chart(
 
         if df is None or df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            fig.add_annotation(
+                text="aucune donnée disponible",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+            )
             return fig
 
         motor_labels = {
-            1: "hydrocarbure", 2: "électrique", 3: "hydrogène",
-            4: "humaine", 5: "hybride", 6: "GPL", 9: "autre"
+            1: "hydrocarbure",
+            2: "électrique",
+            3: "hydrogène",
+            4: "humaine",
+            5: "hybride",
+            6: "GPL",
+            9: "autre",
         }
         df["motor_label"] = df["motor"].map(motor_labels).fillna("inconnu")
         df = df.sort_values(by="count", ascending=False)
 
-        fig = go.Figure(data=[go.Pie(
-            labels=df["motor_label"], values=df["count"],
-            marker={"line": {"color": "#0e111b", "width": 2}},
-            textposition="auto", hovertemplate="<b>%{label}</b><br>accidents: %{value}<br>part: %{percent}<extra></extra>",
-            textinfo="percent", textfont={"size": 14, "color": "#e6e9f2"}
-        )])
+        fig = go.Figure(
+            data=[
+                go.Pie(
+                    labels=df["motor_label"],
+                    values=df["count"],
+                    marker={"line": {"color": "#0e111b", "width": 2}},
+                    textposition="auto",
+                    hovertemplate="<b>%{label}</b><br>accidents: %{value}<br>part: %{percent}<extra></extra>",
+                    textinfo="percent",
+                    textfont={"size": 14, "color": "#e6e9f2"},
+                )
+            ]
+        )
         fig.update_layout(
-            title={"text": "DISTRIBUTION PAR MOTORISATION", "x": 0.5, "xanchor": "center", "font": {"size": 16, "color": "#e6e9f2"}},
-            height=420, margin={"l": 20, "r": 20, "t": 80, "b": 20},
+            title={
+                "text": "DISTRIBUTION PAR MOTORISATION",
+                "x": 0.5,
+                "xanchor": "center",
+                "font": {"size": 16, "color": "#e6e9f2"},
+            },
+            height=420,
+            margin={"l": 20, "r": 20, "t": 80, "b": 20},
             font={"family": "Arial, sans-serif", "size": 12, "color": "#e6e9f2"},
-            paper_bgcolor="#1a1d2e", plot_bgcolor="#1a1d2e", showlegend=True,
-            legend={"font": {"color": "#e6e9f2"}}
+            paper_bgcolor="#1a1d2e",
+            plot_bgcolor="#1a1d2e",
+            showlegend=True,
+            legend={"font": {"color": "#e6e9f2"}},
         )
         return fig
     except Exception as err:
         fig = go.Figure()
-        fig.add_annotation(text=f"erreur: {str(err)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        fig.add_annotation(
+            text=f"erreur: {str(err)[:100]}",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
         return fig
 
 
@@ -1155,12 +1507,23 @@ def _make_catv_gender_bar_chart(
 ):
     """barres empilées : proportion H/F par catégorie de véhicule."""
     try:
+
         def _query_one(y: int) -> pd.DataFrame:
             # Pour 2024, pas de données vehicule
             if y == 2024:
                 return pd.DataFrame()
-            
-            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+
+            use_join = any(
+                v is not None
+                for v in (
+                    sexe_filter,
+                    trajet_filter,
+                    birth_year_min,
+                    birth_year_max,
+                    catv_filter,
+                    motor_filter,
+                )
+            )
             table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
             where_parts = ["catv IS NOT NULL", "sexe IS NOT NULL"]
             params = {}
@@ -1180,7 +1543,9 @@ def _make_catv_gender_bar_chart(
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
-                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                where_parts.append(
+                    "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
+                )
                 params["birth_year_min"] = birth_year_min
                 params["birth_year_max"] = birth_year_max
             if catv_filter is not None:
@@ -1209,33 +1574,60 @@ def _make_catv_gender_bar_chart(
 
         if df is None or df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            fig.add_annotation(
+                text="aucune donnée disponible",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+            )
             return fig
 
         catv_labels = {
-            1: "vélo", 2: "cyclo <50", 3: "voiturette", 7: "VL seul",
-            10: "VL+caravane", 13: "VL+remorque", 14: "VU 1.5-3.5T",
-            15: "VU >3.5T", 16: "VU+remorque", 17: "PL 3.5-7.5T",
-            18: "PL >7.5T", 19: "PL+remorque", 20: "tracteur",
-            21: "tracteur+semi", 30: "scooter immat", 31: "moto >50",
-            32: "scooter <50", 33: "moto >125", 34: "scooter >125",
-            37: "transport com", 38: "tramway", 40: "quad léger",
-            41: "quad lourd", 42: "cyclomoteur", 50: "EDP motor",
-            60: "EDP non motor", 99: "autre"
+            1: "vélo",
+            2: "cyclo <50",
+            3: "voiturette",
+            7: "VL seul",
+            10: "VL+caravane",
+            13: "VL+remorque",
+            14: "VU 1.5-3.5T",
+            15: "VU >3.5T",
+            16: "VU+remorque",
+            17: "PL 3.5-7.5T",
+            18: "PL >7.5T",
+            19: "PL+remorque",
+            20: "tracteur",
+            21: "tracteur+semi",
+            30: "scooter immat",
+            31: "moto >50",
+            32: "scooter <50",
+            33: "moto >125",
+            34: "scooter >125",
+            37: "transport com",
+            38: "tramway",
+            40: "quad léger",
+            41: "quad lourd",
+            42: "cyclomoteur",
+            50: "EDP motor",
+            60: "EDP non motor",
+            99: "autre",
         }
-        
+
         # Calculer les totaux par catégorie
         totals = df.groupby("catv")["count"].sum().reset_index()
         totals = totals.sort_values("count", ascending=False).head(10)
         top_catv = totals["catv"].tolist()
-        
+
         # Filtrer pour garder seulement le top 10
         df = df[df["catv"].isin(top_catv)]
         df["catv_label"] = df["catv"].map(catv_labels).fillna("inconnu")
-        
+
         # Pivoter pour avoir sexe en colonnes
-        pivot = df.pivot_table(index="catv_label", columns="sexe", values="count", fill_value=0, aggfunc="sum")
-        
+        pivot = df.pivot_table(
+            index="catv_label", columns="sexe", values="count", fill_value=0, aggfunc="sum"
+        )
+
         # Calculer les pourcentages
         pivot["total"] = pivot.sum(axis=1)
         if 1 in pivot.columns:
@@ -1246,40 +1638,49 @@ def _make_catv_gender_bar_chart(
             pivot["femme_pct"] = (pivot[2] / pivot["total"] * 100).round(1)
         else:
             pivot["femme_pct"] = 0
-        
+
         # Trier par total décroissant
         pivot = pivot.sort_values("total", ascending=True)
-        
+
         fig = go.Figure()
-        
+
         # Barre femmes
-        fig.add_trace(go.Bar(
-            y=pivot.index,
-            x=pivot["femme_pct"],
-            name="Femme",
-            orientation="h",
-            marker={"color": "#ff57c2"},
-            text=pivot["femme_pct"].apply(lambda x: f"{x:.1f}%"),
-            textposition="inside",
-            textfont={"color": "#ffffff", "size": 11},
-            hovertemplate="<b>%{y}</b><br>Femmes: %{x:.1f}%<extra></extra>"
-        ))
-        
+        fig.add_trace(
+            go.Bar(
+                y=pivot.index,
+                x=pivot["femme_pct"],
+                name="Femme",
+                orientation="h",
+                marker={"color": "#ff57c2"},
+                text=pivot["femme_pct"].apply(lambda x: f"{x:.1f}%"),
+                textposition="inside",
+                textfont={"color": "#ffffff", "size": 11},
+                hovertemplate="<b>%{y}</b><br>Femmes: %{x:.1f}%<extra></extra>",
+            )
+        )
+
         # Barre hommes
-        fig.add_trace(go.Bar(
-            y=pivot.index,
-            x=pivot["homme_pct"],
-            name="Homme",
-            orientation="h",
-            marker={"color": "#3ae7ff"},
-            text=pivot["homme_pct"].apply(lambda x: f"{x:.1f}%"),
-            textposition="inside",
-            textfont={"color": "#000000", "size": 11},
-            hovertemplate="<b>%{y}</b><br>Hommes: %{x:.1f}%<extra></extra>"
-        ))
-        
+        fig.add_trace(
+            go.Bar(
+                y=pivot.index,
+                x=pivot["homme_pct"],
+                name="Homme",
+                orientation="h",
+                marker={"color": "#3ae7ff"},
+                text=pivot["homme_pct"].apply(lambda x: f"{x:.1f}%"),
+                textposition="inside",
+                textfont={"color": "#000000", "size": 11},
+                hovertemplate="<b>%{y}</b><br>Hommes: %{x:.1f}%<extra></extra>",
+            )
+        )
+
         fig.update_layout(
-            title={"text": "PROPORTION H/F PAR CATÉGORIE VÉHICULE (TOP 10)", "x": 0.5, "xanchor": "center", "font": {"size": 16, "color": "#e6e9f2"}},
+            title={
+                "text": "PROPORTION H/F PAR CATÉGORIE VÉHICULE (TOP 10)",
+                "x": 0.5,
+                "xanchor": "center",
+                "font": {"size": 16, "color": "#e6e9f2"},
+            },
             barmode="stack",
             height=500,
             margin={"l": 150, "r": 20, "t": 80, "b": 60},
@@ -1290,24 +1691,29 @@ def _make_catv_gender_bar_chart(
                 "title": "Pourcentage (%)",
                 "gridcolor": "#2d3548",
                 "range": [0, 100],
-                "tickfont": {"color": "#e6e9f2"}
+                "tickfont": {"color": "#e6e9f2"},
             },
-            yaxis={
-                "tickfont": {"color": "#e6e9f2"}
-            },
+            yaxis={"tickfont": {"color": "#e6e9f2"}},
             legend={
                 "font": {"color": "#e6e9f2"},
                 "orientation": "h",
                 "yanchor": "bottom",
                 "y": -0.15,
                 "xanchor": "center",
-                "x": 0.5
-            }
+                "x": 0.5,
+            },
         )
         return fig
     except Exception as err:
         fig = go.Figure()
-        fig.add_annotation(text=f"erreur: {str(err)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        fig.add_annotation(
+            text=f"erreur: {str(err)[:100]}",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
         return fig
 
 
@@ -1325,13 +1731,14 @@ def _make_age_histogram(
 ):
     """histogramme de distribution par année de naissance."""
     try:
+
         def _query_one(y: int) -> pd.DataFrame:
             # Toujours besoin de usager pour an_nais
             if y == 2024:
                 table_name = "caract_usager_2024"
             else:
                 table_name = f"caract_usager_vehicule_{y}"
-            
+
             where_parts = ["an_nais IS NOT NULL", "CAST(an_nais AS INTEGER) > 0"]
             params = {}
             if agg_filter in (1, 2):
@@ -1350,7 +1757,9 @@ def _make_age_histogram(
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
-                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                where_parts.append(
+                    "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
+                )
                 params["birth_year_min"] = birth_year_min
                 params["birth_year_max"] = birth_year_max
             if y != 2024:
@@ -1380,7 +1789,14 @@ def _make_age_histogram(
 
         if df is None or df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="aucune donnée disponible", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+            fig.add_annotation(
+                text="aucune donnée disponible",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+            )
             return fig
 
         # Convertir an_nais en entier et calculer l'âge
@@ -1391,15 +1807,22 @@ def _make_age_histogram(
         df = df.sort_values("an_nais")
 
         fig = go.Figure()
-        fig.add_trace(go.Bar(
-            x=df["an_nais"],
-            y=df["count"],
-            marker={"color": "#3ae7ff", "line": {"color": "#1a8fa8", "width": 1}},
-            hovertemplate="<b>Année: %{x}</b><br>Accidents: %{y}<extra></extra>"
-        ))
+        fig.add_trace(
+            go.Bar(
+                x=df["an_nais"],
+                y=df["count"],
+                marker={"color": "#3ae7ff", "line": {"color": "#1a8fa8", "width": 1}},
+                hovertemplate="<b>Année: %{x}</b><br>Accidents: %{y}<extra></extra>",
+            )
+        )
 
         fig.update_layout(
-            title={"text": "RÉPARTITION DES CONDUCTEURS PAR ANNÉE DE NAISSANCE", "x": 0.5, "xanchor": "center", "font": {"size": 16, "color": "#e6e9f2"}},
+            title={
+                "text": "RÉPARTITION DES CONDUCTEURS PAR ANNÉE DE NAISSANCE",
+                "x": 0.5,
+                "xanchor": "center",
+                "font": {"size": 16, "color": "#e6e9f2"},
+            },
             xaxis={
                 "title": "Année de naissance",
                 "gridcolor": "#2d3548",
@@ -1422,7 +1845,14 @@ def _make_age_histogram(
         return fig
     except Exception as err:
         fig = go.Figure()
-        fig.add_annotation(text=f"erreur: {str(err)[:100]}", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        fig.add_annotation(
+            text=f"erreur: {str(err)[:100]}",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
         return fig
 
 
@@ -1614,7 +2044,7 @@ def create_choropleth_page(carte_mode="dept", year=2023):
         "boxShadow": "0 0 10px rgba(58,231,255,0.55)",
     }
     inactive_year_style = base_btn
-    
+
     available_carte_years = sorted(_available_years(), reverse=True)
     year_buttons = [
         html.Button(
@@ -1640,13 +2070,49 @@ def create_choropleth_page(carte_mode="dept", year=2023):
                 [
                     html.Div(
                         [
-                            html.Div("vue", style={"fontSize": "12px", "color": "var(--text-300)", "marginBottom": "6px"}),
-                            html.Button("vue par région", id="btn-carte-region", n_clicks=0, style=region_style),
-                            html.Button("vue par département", id="btn-carte-dept", n_clicks=0, style=dept_style),
-                            html.Button("vue par commune", id="btn-carte-commune", n_clicks=0, style=commune_style),
+                            html.Div(
+                                "vue",
+                                style={
+                                    "fontSize": "12px",
+                                    "color": "var(--text-300)",
+                                    "marginBottom": "6px",
+                                },
+                            ),
+                            html.Button(
+                                "vue par région",
+                                id="btn-carte-region",
+                                n_clicks=0,
+                                style=region_style,
+                            ),
+                            html.Button(
+                                "vue par département",
+                                id="btn-carte-dept",
+                                n_clicks=0,
+                                style=dept_style,
+                            ),
+                            html.Button(
+                                "vue par commune",
+                                id="btn-carte-commune",
+                                n_clicks=0,
+                                style=commune_style,
+                            ),
                             html.Hr(style={"margin": "16px 0"}),
-                            html.Div("année", style={"fontSize": "12px", "color": "var(--text-300)", "marginBottom": "8px"}),
-                            html.Div(year_buttons, style={"display": "grid", "gridTemplateColumns": "repeat(2, 1fr)", "gap": "10px"}),
+                            html.Div(
+                                "année",
+                                style={
+                                    "fontSize": "12px",
+                                    "color": "var(--text-300)",
+                                    "marginBottom": "8px",
+                                },
+                            ),
+                            html.Div(
+                                year_buttons,
+                                style={
+                                    "display": "grid",
+                                    "gridTemplateColumns": "repeat(2, 1fr)",
+                                    "gap": "10px",
+                                },
+                            ),
                         ],
                         className="page-card",
                         style={
@@ -1677,7 +2143,7 @@ try:
 except Exception:
     choropleth_page = html.Div(
         html.P("Données en chargement... Rafraîchissez la page dans quelques secondes."),
-        style={"padding": "40px", "textAlign": "center", "color": "#999", "fontSize": "16px"}
+        style={"padding": "40px", "textAlign": "center", "color": "#999", "fontSize": "16px"},
     )
 
 graph_page = html.Div(
@@ -1699,7 +2165,10 @@ graph_page = html.Div(
                                 "paddingBottom": "12px",
                             },
                         ),
-                        html.Label("sexe", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "sexe",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.Dropdown(
                             id="filter-usager-sexe",
                             options=[
@@ -1711,7 +2180,10 @@ graph_page = html.Div(
                             clearable=False,
                             style={"marginBottom": "12px"},
                         ),
-                        html.Label("trajet", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "trajet",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.Dropdown(
                             id="filter-usager-trajet",
                             options=[
@@ -1727,7 +2199,10 @@ graph_page = html.Div(
                             clearable=False,
                             style={"marginBottom": "12px"},
                         ),
-                        html.Label("année de naissance", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "année de naissance",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.RangeSlider(
                             id="filter-usager-age",
                             min=1925,
@@ -1747,7 +2222,10 @@ graph_page = html.Div(
                                 "paddingBottom": "12px",
                             },
                         ),
-                        html.Label("catégorie véhicule", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "catégorie véhicule",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.Dropdown(
                             id="filter-vehicule-catv",
                             options=[
@@ -1784,7 +2262,10 @@ graph_page = html.Div(
                             clearable=False,
                             style={"marginBottom": "12px"},
                         ),
-                        html.Label("motorisation", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "motorisation",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.Dropdown(
                             id="filter-vehicule-motor",
                             options=[
@@ -1802,15 +2283,27 @@ graph_page = html.Div(
                             style={"marginBottom": "12px"},
                         ),
                         html.Hr(style={"margin": "16px 0"}),
-                        html.Label("année", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "année",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.Dropdown(
                             id="filter-annee",
-                            options=([{"label": "toutes", "value": "all"}] + [{"label": str(y), "value": y} for y in sorted(_available_years(), reverse=True)]),
+                            options=(
+                                [{"label": "toutes", "value": "all"}]
+                                + [
+                                    {"label": str(y), "value": y}
+                                    for y in sorted(_available_years(), reverse=True)
+                                ]
+                            ),
                             value="all",
                             clearable=False,
                             style={"marginBottom": "12px"},
                         ),
-                        html.Label("luminosité", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "luminosité",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.Dropdown(
                             id="filter-luminosite",
                             options=[
@@ -1825,7 +2318,10 @@ graph_page = html.Div(
                             clearable=False,
                             style={"marginBottom": "12px"},
                         ),
-                        html.Label("conditions atmosphériques", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "conditions atmosphériques",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.Dropdown(
                             id="filter-atm",
                             options=[
@@ -1844,10 +2340,17 @@ graph_page = html.Div(
                             clearable=False,
                             style={"marginBottom": "12px"},
                         ),
-                        html.Label("agglomération", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        html.Label(
+                            "agglomération",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
                         dcc.Dropdown(
                             id="filter-agglomeration",
-                            options=[{"label": "tous", "value": "all"}, {"label": "agglomération", "value": 1}, {"label": "hors agglomération", "value": 2}],
+                            options=[
+                                {"label": "tous", "value": "all"},
+                                {"label": "agglomération", "value": 1},
+                                {"label": "hors agglomération", "value": 2},
+                            ],
                             value="all",
                             clearable=False,
                         ),
@@ -1877,7 +2380,6 @@ graph_page = html.Div(
                         "alignSelf": "flex-start",
                     },
                 ),
-
                 # Contenu principal à droite
                 html.Div(
                     [
@@ -1898,11 +2400,63 @@ graph_page = html.Div(
                                         ),
                                         html.Div(
                                             [
-                                                html.Button("heures", id="btn-ts-hour", n_clicks=0, style={"padding": "8px 14px", "borderRadius": "8px", "border": "1px solid var(--border)", "backgroundColor": "#1a2035", "color": "#b9bfd3"}),
-                                                html.Button("jours", id="btn-ts-day", n_clicks=0, style={"padding": "8px 14px", "borderRadius": "8px", "border": "1px solid var(--border)", "backgroundColor": "#1a2035", "color": "#b9bfd3", "marginLeft": "8px"}),
-                                                html.Button("mois", id="btn-ts-month", n_clicks=0, style={"padding": "8px 14px", "borderRadius": "8px", "border": "1px solid var(--border)", "backgroundColor": "#1a2035", "color": "#b9bfd3", "marginLeft": "8px"}),
+                                                html.Button(
+                                                    "heures",
+                                                    id="btn-ts-hour",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "padding": "8px 14px",
+                                                        "borderRadius": "8px",
+                                                        "border": "1px solid var(--border)",
+                                                        "backgroundColor": "#1a2035",
+                                                        "color": "#b9bfd3",
+                                                    },
+                                                ),
+                                                html.Button(
+                                                    "jours",
+                                                    id="btn-ts-day",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "padding": "8px 14px",
+                                                        "borderRadius": "8px",
+                                                        "border": "1px solid var(--border)",
+                                                        "backgroundColor": "#1a2035",
+                                                        "color": "#b9bfd3",
+                                                        "marginLeft": "8px",
+                                                    },
+                                                ),
+                                                html.Button(
+                                                    "mois",
+                                                    id="btn-ts-month",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "padding": "8px 14px",
+                                                        "borderRadius": "8px",
+                                                        "border": "1px solid var(--border)",
+                                                        "backgroundColor": "#1a2035",
+                                                        "color": "#b9bfd3",
+                                                        "marginLeft": "8px",
+                                                    },
+                                                ),
+                                                html.Button(
+                                                    "jours semaine",
+                                                    id="btn-ts-weekday",
+                                                    n_clicks=0,
+                                                    style={
+                                                        "padding": "8px 14px",
+                                                        "borderRadius": "8px",
+                                                        "border": "1px solid var(--border)",
+                                                        "backgroundColor": "#1a2035",
+                                                        "color": "#b9bfd3",
+                                                        "marginLeft": "8px",
+                                                    },
+                                                ),
                                             ],
-                                            style={"display": "flex", "justifyContent": "flex-start", "marginBottom": "12px"},
+                                            style={
+                                                "display": "flex",
+                                                "justifyContent": "flex-start",
+                                                "marginBottom": "12px",
+                                            },
                                         ),
                                     ]
                                 ),
@@ -1915,7 +2469,6 @@ graph_page = html.Div(
                             className="page-card",
                             style={"padding": "20px", "borderTop": "4px solid #7b5cff"},
                         ),
-
                         html.Div(
                             [
                                 html.H3(
@@ -1936,7 +2489,11 @@ graph_page = html.Div(
                                 ),
                             ],
                             className="page-card",
-                            style={"padding": "20px", "borderTop": "4px solid #ff57c2", "marginTop": "24px"},
+                            style={
+                                "padding": "20px",
+                                "borderTop": "4px solid #ff57c2",
+                                "marginTop": "24px",
+                            },
                         ),
                         html.Div(
                             [
@@ -1958,7 +2515,11 @@ graph_page = html.Div(
                                 ),
                             ],
                             className="page-card",
-                            style={"padding": "20px", "borderTop": "4px solid #3ae7ff", "marginTop": "24px"},
+                            style={
+                                "padding": "20px",
+                                "borderTop": "4px solid #3ae7ff",
+                                "marginTop": "24px",
+                            },
                         ),
                         html.Div(
                             [
@@ -1980,7 +2541,11 @@ graph_page = html.Div(
                                 ),
                             ],
                             className="page-card",
-                            style={"padding": "20px", "borderTop": "4px solid #ff57c2", "marginTop": "24px"},
+                            style={
+                                "padding": "20px",
+                                "borderTop": "4px solid #ff57c2",
+                                "marginTop": "24px",
+                            },
                         ),
                         html.Div(
                             [
@@ -2002,7 +2567,11 @@ graph_page = html.Div(
                                 ),
                             ],
                             className="page-card",
-                            style={"padding": "20px", "borderTop": "4px solid #3ae7ff", "marginTop": "24px"},
+                            style={
+                                "padding": "20px",
+                                "borderTop": "4px solid #3ae7ff",
+                                "marginTop": "24px",
+                            },
                         ),
                         html.Div(
                             [
@@ -2024,7 +2593,11 @@ graph_page = html.Div(
                                 ),
                             ],
                             className="page-card",
-                            style={"padding": "20px", "borderTop": "4px solid #f093fb", "marginTop": "24px"},
+                            style={
+                                "padding": "20px",
+                                "borderTop": "4px solid #f093fb",
+                                "marginTop": "24px",
+                            },
                         ),
                     ],
                     style={"flex": "1", "minWidth": "0"},
@@ -2087,7 +2660,8 @@ authors_page = html.Div(
 # barre de navigation
 # ============================================================================
 
-def create_nav_button(label, button_id, active=False):
+
+def create_nav_button(label, button_id, _active=False):
     """crée un bouton de navigation stylisé."""
     return html.Button(
         label,
@@ -2116,7 +2690,11 @@ navbar = html.Div(
                     [
                         html.H3(
                             "DASHBOARD ACCIDENTOLOGIE",
-                            style={"color": "white", "margin": "0 20px 0 0", "letterSpacing": "0.5px"},
+                            style={
+                                "color": "white",
+                                "margin": "0 20px 0 0",
+                                "letterSpacing": "0.5px",
+                            },
                         )
                     ],
                     style={"display": "flex", "alignItems": "center"},
@@ -2129,7 +2707,12 @@ navbar = html.Div(
                         create_nav_button("graphique", "btn-graph"),
                         create_nav_button("auteurs", "btn-authors"),
                     ],
-                    style={"display": "flex", "justifyContent": "center", "gap": "10px", "flex": "1"},
+                    style={
+                        "display": "flex",
+                        "justifyContent": "center",
+                        "gap": "10px",
+                        "flex": "1",
+                    },
                 ),
                 html.Div(style={"width": "120px"}),
             ],
@@ -2217,10 +2800,14 @@ def update_carte_view(*_args):
         return create_choropleth_page("dept", default_year)
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    
+
     # Déterminer le mode (dept, region, ou commune)
     if button_id in ["btn-carte-region", "btn-carte-dept", "btn-carte-commune"]:
-        mode = "region" if button_id == "btn-carte-region" else ("commune" if button_id == "btn-carte-commune" else "dept")
+        mode = (
+            "region"
+            if button_id == "btn-carte-region"
+            else ("commune" if button_id == "btn-carte-commune" else "dept")
+        )
         # garder l'année courante si possible
         current_year_str = dash.callback_context.states.get("carte-year-flag.children")
         try:
@@ -2229,7 +2816,7 @@ def update_carte_view(*_args):
             current_year = None
         year_to_use = current_year or (_available_years()[-1] if _available_years() else 2023)
         return create_choropleth_page(mode, year_to_use)
-    
+
     # Déterminer l'année
     m = re.match(r"btn-carte-year-(\d{4})", button_id)
     if m:
@@ -2238,7 +2825,7 @@ def update_carte_view(*_args):
         current_mode = dash.callback_context.states.get("carte-mode-flag.children")
         mode = current_mode if current_mode in ("dept", "region", "commune") else "dept"
         return create_choropleth_page(mode, year)
-    
+
     default_year = _available_years()[-1] if _available_years() else 2023
     return create_choropleth_page("dept", default_year)
 
@@ -2282,10 +2869,25 @@ def update_histogram_year(*_args):
         Input("btn-ts-hour", "n_clicks"),
         Input("btn-ts-day", "n_clicks"),
         Input("btn-ts-month", "n_clicks"),
+        Input("btn-ts-weekday", "n_clicks"),
     ],
 )
-def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value, trajet_value, age_range, catv_value, motor_value, _n_h, _n_d, _n_m):
-    """met à jour la courbe temporelle (heures/jours/mois) et les camemberts."""
+def update_graph_page_charts(
+    annee,
+    agg_value,
+    lum_value,
+    atm_value,
+    sexe_value,
+    trajet_value,
+    age_range,
+    catv_value,
+    motor_value,
+    _n_h,
+    _n_d,
+    _n_m,
+    _n_w,
+):
+    """met à jour la courbe temporelle (heures/jours/mois/jour de semaine) et les camemberts."""
     ctx = dash.callback_context
     year = annee
 
@@ -2332,6 +2934,8 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value,
             unit = "day"
         elif btn == "btn-ts-month":
             unit = "month"
+        elif btn == "btn-ts-weekday":
+            unit = "weekday"
 
     return (
         _make_time_series(
