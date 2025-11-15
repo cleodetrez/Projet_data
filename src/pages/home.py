@@ -808,6 +808,8 @@ def _make_time_series(
                 table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
             else:
                 table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+            
+            # Les colonnes lum et atm sont toujours dans caracteristiques, donc OK
             params: dict = {}
             where_parts = []
 
@@ -2412,8 +2414,6 @@ graph_page = html.Div(
                     style={
                         "width": "260px",
                         "padding": "20px",
-                        "position": "sticky",
-                        "top": "100px",
                         "alignSelf": "flex-start",
                     },
                 ),
@@ -2931,7 +2931,9 @@ def update_graph_page_charts(
     year = annee
 
     # normaliser l'agglo
-    if agg_value in (1, 2):
+    if agg_value == "all" or agg_value is None:
+        agg_filter = None
+    elif agg_value in (1, 2):
         agg_filter = agg_value
     elif isinstance(agg_value, str) and agg_value in ("1", "2"):
         agg_filter = int(agg_value)
@@ -2939,7 +2941,9 @@ def update_graph_page_charts(
         agg_filter = None
 
     # normaliser la luminosité
-    if lum_value in (1, 2, 3, 4, 5):
+    if lum_value == "all" or lum_value is None:
+        lum_filter = None
+    elif lum_value in (1, 2, 3, 4, 5):
         lum_filter = lum_value
     elif isinstance(lum_value, str) and lum_value in ("1", "2", "3", "4", "5"):
         lum_filter = int(lum_value)
@@ -2947,7 +2951,9 @@ def update_graph_page_charts(
         lum_filter = None
 
     # normaliser les conditions atmosphériques
-    if atm_value in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+    if atm_value == "all" or atm_value is None:
+        atm_filter = None
+    elif atm_value in (1, 2, 3, 4, 5, 6, 7, 8, 9):
         atm_filter = atm_value
     elif isinstance(atm_value, str) and atm_value in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
         atm_filter = int(atm_value)
