@@ -806,7 +806,6 @@ def _make_time_series(
                 )
             )
             table_name = f"caract_usager_vehicule_{y}" if need_join else f"caracteristiques_{y}"
-            
             # Les colonnes lum et atm sont toujours dans caracteristiques, donc OK
             params: dict = {}
             where_parts = []
@@ -867,9 +866,10 @@ def _make_time_series(
             where_clause = " AND ".join(where_parts) if where_parts else "1=1"
             if unit == "weekday":
                 sql = (
-                    f"SELECT CAST(mois AS INTEGER) AS mois, CAST(jour AS INTEGER) AS jour, COUNT(*) AS accidents "
+                    "SELECT CAST(mois AS INTEGER) AS mois, "
+                    "CAST(jour AS INTEGER) AS jour, COUNT(*) AS accidents "
                     f"FROM {table_name} WHERE {where_clause} "
-                    f"GROUP BY mois, jour ORDER BY mois, jour"
+                    "GROUP BY mois, jour ORDER BY mois, jour"
                 )
                 df = query_db(sql, params)
                 if df is None or df.empty:
@@ -885,7 +885,7 @@ def _make_time_series(
                     {"year": y, "month": df["mois"], "day": df["jour"]}, errors="coerce"
                 )
                 dow = dates.dt.dayofweek  # 0=lundi .. 6=dimanche
-                df = df.assign(x=(dow + 1))  # 1..7
+                df = df.assign(x=dow + 1)  # 1..7
                 df = df.groupby("x", as_index=False).agg({"accidents": "sum"})
                 return df
             else:
@@ -1225,7 +1225,11 @@ def _make_catv_pie_chart(
                 where_parts.append("CAST(motor AS INTEGER) = :motor")
                 params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
-            sql = f"SELECT catv, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY catv"
+            sql = (
+                "SELECT catv, COUNT(*) AS count "
+                f"FROM {table_name} WHERE {where_clause} "
+                "GROUP BY catv"
+            )
             return query_db(sql, params)
 
         if isinstance(year, str) and year == "all":
@@ -1293,7 +1297,10 @@ def _make_catv_pie_chart(
                     values=df["count"],
                     marker={"line": {"color": "#0e111b", "width": 2}},
                     textposition="auto",
-                    hovertemplate="<b>%{label}</b><br>accidents: %{value}<br>part: %{percent}<extra></extra>",
+                    hovertemplate=(
+                        "<b>%{label}</b><br>accidents: %{value}<br>"
+                        "part: %{percent}<extra></extra>"
+                    ),
                     textinfo="percent",
                     textfont={"size": 12, "color": "#e6e9f2"},
                 )
@@ -1380,7 +1387,11 @@ def _make_motor_pie_chart(
                 where_parts.append("CAST(motor AS INTEGER) = :motor")
                 params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
-            sql = f"SELECT motor, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY motor"
+            sql = (
+                "SELECT motor, COUNT(*) AS count "
+                f"FROM {table_name} WHERE {where_clause} "
+                "GROUP BY motor"
+            )
             return query_db(sql, params)
 
         if isinstance(year, str) and year == "all":
@@ -1428,7 +1439,10 @@ def _make_motor_pie_chart(
                     values=df["count"],
                     marker={"line": {"color": "#0e111b", "width": 2}},
                     textposition="auto",
-                    hovertemplate="<b>%{label}</b><br>accidents: %{value}<br>part: %{percent}<extra></extra>",
+                    hovertemplate=(
+                        "<b>%{label}</b><br>accidents: %{value}<br>"
+                        "part: %{percent}<extra></extra>"
+                    ),
                     textinfo="percent",
                     textfont={"size": 14, "color": "#e6e9f2"},
                 )
@@ -1515,7 +1529,11 @@ def _make_catv_gender_bar_chart(
                 where_parts.append("CAST(motor AS INTEGER) = :motor")
                 params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
-            sql = f"SELECT catv, sexe, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY catv, sexe"
+            sql = (
+                "SELECT catv, sexe, COUNT(*) AS count "
+                f"FROM {table_name} WHERE {where_clause} "
+                "GROUP BY catv, sexe"
+            )
             return query_db(sql, params)
 
         if isinstance(year, str) and year == "all":
@@ -1734,7 +1752,11 @@ def _make_age_histogram(
                 where_parts.append("CAST(motor AS INTEGER) = :motor")
                 params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
-            sql = f"SELECT an_nais, annee, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY an_nais, annee"
+            sql = (
+                "SELECT an_nais, annee, COUNT(*) AS count "
+                f"FROM {table_name} WHERE {where_clause} "
+                "GROUP BY an_nais, annee"
+            )
             return query_db(sql, params)
 
         if isinstance(year, str) and year == "all":
@@ -1768,16 +1790,15 @@ def _make_age_histogram(
         df = df.dropna(subset=["an_nais", "annee"])
         df["an_nais"] = df["an_nais"].astype(int)
         df["annee"] = df["annee"].astype(int)
-        df = df[(df["an_nais"] >= 1900) & (df["an_nais"] <= 2024)]  # Filtrer les années aberrantes
-        
+        df = df[
+            (df["an_nais"] >= 1900) & (df["an_nais"] <= 2024)
+        ]  # Filtrer les années aberrantes
         # Calculer l'âge au moment de l'accident
         df["age"] = df["annee"] - df["an_nais"]
         df = df[(df["age"] >= 0) & (df["age"] <= 120)]  # Filtrer les âges aberrants
-        
         # Appliquer le filtre d'âge si spécifié
         if age_min_filter is not None and age_max_filter is not None:
             df = df[(df["age"] >= age_min_filter) & (df["age"] <= age_max_filter)]
-        
         # Définir les tranches d'âge
         def categorize_age(age):
             if age < 18:
@@ -1796,13 +1817,10 @@ def _make_age_histogram(
                 return "65-74 ans"
             else:
                 return "75+ ans"
-        
         df["tranche_age"] = df["age"].apply(categorize_age)
-        
         # Agréger par âge
         df = df.groupby(["age", "tranche_age"], as_index=False).agg({"count": "sum"})
         df = df.sort_values("age")
-        
         # Couleurs pour chaque tranche d'âge (néon du dashboard)
         color_map = {
             "0-17 ans": "#3ae7ff",
@@ -1814,21 +1832,21 @@ def _make_age_histogram(
             "65-74 ans": "#9d57ff",
             "75+ ans": "#ad3fff"
         }
-        
         df["color"] = df["tranche_age"].map(color_map)
-
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
                 x=df["age"],
                 y=df["count"],
                 marker={"color": df["color"], "line": {"color": "#1a1d2e", "width": 1}},
-                hovertemplate="<b>Âge: %{x} ans</b><br>Tranche: %{customdata}<br>Accidents: %{y}<extra></extra>",
+                hovertemplate=(
+                    "<b>Âge: %{x} ans</b><br>Tranche: %{customdata}<br>"
+                    "Accidents: %{y}<extra></extra>"
+                ),
                 customdata=df["tranche_age"],
                 showlegend=False,
             )
         )
-        
         # Ajouter la légende manuellement avec les tranches d'âge
         for tranche, color in color_map.items():
             fig.add_trace(
@@ -1915,7 +1933,6 @@ def _make_age_tranche_histogram(
         if birth_year_min is not None and birth_year_max is not None:
             age_min_filter = 2024 - birth_year_max
             age_max_filter = 2024 - birth_year_min
-        
         def _query_one(y: int) -> pd.DataFrame:
             # Always use joined table when querying with usager columns
             table_name = f"caract_usager_vehicule_{y}"
@@ -1947,7 +1964,11 @@ def _make_age_tranche_histogram(
                 where_parts.append("CAST(motor AS INTEGER) = :motor")
                 params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
-            sql = f"SELECT an_nais, annee, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY an_nais, annee"
+            sql = (
+                "SELECT an_nais, annee, COUNT(*) AS count "
+                f"FROM {table_name} WHERE {where_clause} "
+                "GROUP BY an_nais, annee"
+            )
             return query_db(sql, params)
 
         if isinstance(year, str) and year == "all":
@@ -1983,11 +2004,9 @@ def _make_age_tranche_histogram(
         df = df[(df["an_nais"] >= 1900) & (df["an_nais"] <= 2024)]
         df["age"] = df["annee"] - df["an_nais"]
         df = df[(df["age"] >= 0) & (df["age"] <= 120)]
-        
         # Appliquer le filtre d'âge si spécifié
         if age_min_filter is not None and age_max_filter is not None:
             df = df[(df["age"] >= age_min_filter) & (df["age"] <= age_max_filter)]
-        
         def categorize_age(age):
             if age < 18:
                 return "0-17 ans"
@@ -2005,17 +2024,26 @@ def _make_age_tranche_histogram(
                 return "65-74 ans"
             else:
                 return "75+ ans"
-        
         df["tranche_age"] = df["age"].apply(categorize_age)
-        
         # Agréger par TRANCHE uniquement
         df_tranche = df.groupby("tranche_age", as_index=False).agg({"count": "sum"})
-        
         # Ordre des tranches
-        tranche_order = ["0-17 ans", "18-24 ans", "25-34 ans", "35-44 ans", "45-54 ans", "55-64 ans", "65-74 ans", "75+ ans"]
-        df_tranche["tranche_age"] = pd.Categorical(df_tranche["tranche_age"], categories=tranche_order, ordered=True)
+        tranche_order = [
+            "0-17 ans",
+            "18-24 ans",
+            "25-34 ans",
+            "35-44 ans",
+            "45-54 ans",
+            "55-64 ans",
+            "65-74 ans",
+            "75+ ans",
+        ]
+        df_tranche["tranche_age"] = pd.Categorical(
+            df_tranche["tranche_age"],
+            categories=tranche_order,
+            ordered=True,
+        )
         df_tranche = df_tranche.sort_values("tranche_age")
-        
         color_map = {
             "0-17 ans": "#3ae7ff",
             "18-24 ans": "#4ecfff",
@@ -2026,9 +2054,7 @@ def _make_age_tranche_histogram(
             "65-74 ans": "#9d57ff",
             "75+ ans": "#ad3fff"
         }
-        
         df_tranche["color"] = df_tranche["tranche_age"].map(color_map)
-
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
@@ -2038,7 +2064,6 @@ def _make_age_tranche_histogram(
                 hovertemplate="<b>%{x}</b><br>Accidents: %{y}<extra></extra>",
             )
         )
-
         fig.update_layout(
             title={
                 "text": "RÉPARTITION PAR TRANCHES D'ÂGE",
@@ -2407,13 +2432,24 @@ graph_page = html.Div(
                         ),
                         html.Label(
                             "âge du conducteur",
-                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                            style={
+                                "fontWeight": "600",
+                                "fontSize": "13px",
+                                "marginBottom": "6px",
+                            },
                         ),
                         html.Div(
                             [
                                 html.Div(
                                     [
-                                        html.Label("Min:", style={"fontSize": "11px", "color": "#b9bfd3", "marginRight": "6px"}),
+                                        html.Label(
+                                            "Min:",
+                                            style={
+                                                "fontSize": "11px",
+                                                "color": "#b9bfd3",
+                                                "marginRight": "6px",
+                                            },
+                                        ),
                                         dcc.Input(
                                             id="filter-usager-age-min",
                                             type="number",
@@ -2434,7 +2470,14 @@ graph_page = html.Div(
                                 ),
                                 html.Div(
                                     [
-                                        html.Label("Max:", style={"fontSize": "11px", "color": "#b9bfd3", "marginRight": "6px"}),
+                                        html.Label(
+                                            "Max:",
+                                            style={
+                                                "fontSize": "11px",
+                                                "color": "#b9bfd3",
+                                                "marginRight": "6px",
+                                            },
+                                        ),
                                         dcc.Input(
                                             id="filter-usager-age-max",
                                             type="number",
@@ -2923,7 +2966,10 @@ authors_page = html.Div(
                                 html.Li(
                                     html.A(
                                         "Base accidents corporels (data.gouv.fr)",
-                                        href="https://www.data.gouv.fr/fr/datasets/base-de-donnees-accidents-corporels-de-la-circulation/",
+                                        href=(
+                                            "https://www.data.gouv.fr/fr/datasets/"
+                                            "base-de-donnees-accidents-corporels-de-la-circulation/"
+                                        ),
                                         target="_blank",
                                         style={"color": "var(--accent-blue)"},
                                     )
@@ -2931,7 +2977,10 @@ authors_page = html.Div(
                                 html.Li(
                                     html.A(
                                         "Mesures radars automatiques (data.gouv.fr)",
-                                        href="https://www.data.gouv.fr/fr/datasets/radars/",
+                                        href=(
+                                            "https://www.data.gouv.fr/fr/datasets/"
+                                            "radars/"
+                                        ),
                                         target="_blank",
                                         style={"color": "var(--accent-pink)"},
                                     )
@@ -2939,7 +2988,10 @@ authors_page = html.Div(
                                 html.Li(
                                     html.A(
                                         "gregoiredavid/france-geojson",
-                                        href="https://github.com/gregoiredavid/france-geojson",
+                                        href=(
+                                            "https://github.com/"
+                                            "gregoiredavid/france-geojson"
+                                        ),
                                         target="_blank",
                                         style={"color": "#00d4ff"},
                                     ),

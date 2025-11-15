@@ -7,15 +7,11 @@ from dash import html, dcc, Input, Output, callback
 # navbar
 try:
     from src.pages.navbar import navbar
-except ImportError:
-    from pages.navbar import navbar
-
-# pages : home, about, carte
-try:
     from src.pages.home import layout as home_layout
     from src.pages.about import layout as about_layout
     from src.pages.carte import layout as map_layout
 except ImportError:
+    from pages.navbar import navbar
     from pages.home import layout as home_layout
     from pages.about import layout as about_layout
     try:

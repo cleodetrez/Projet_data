@@ -9,13 +9,13 @@ try:
     from src.pages import home as _home, about as _about, carte as _carte  # type: ignore
     home_layout = _home.layout
     about_layout = _about.layout
-    carte_layout = _carte.layout
+    carte_layout = _carte.layout  # type: ignore[attr-defined]
 except ImportError:
     try:
         from pages import home as _home, about as _about, carte as _carte  # type: ignore
         home_layout = _home.layout
         about_layout = _about.layout
-        carte_layout = _carte.layout
+        carte_layout = _carte.layout  # type: ignore[attr-defined]
     except ImportError:
         def carte_layout() -> html.Div:
             """vue de secours quand la page carte est indisponible."""

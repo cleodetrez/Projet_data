@@ -5,7 +5,7 @@ from pathlib import Path
 try:
     # When executed as part of the package (e.g., via main.py)
     from .common_functions import clean_subset_csv
-except Exception:  # pragma: no cover - fallback for direct script execution
+except ImportError:  # pragma: no cover - fallback for direct script execution
     # When executed directly: python src/utils/clean_vehicule_2024.py
     import sys
     ROOT_FOR_IMPORT = Path(__file__).resolve().parents[2]
