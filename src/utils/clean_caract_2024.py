@@ -67,6 +67,8 @@ def clean_caracteristiques() -> pd.DataFrame:
     rename_map = {}
     if "Num_Acc" in df.columns:
         rename_map["Num_Acc"] = "acc_id"
+    elif "Accident_Id" in df.columns:
+        rename_map["Accident_Id"] = "acc_id"
     if "lat" in df.columns and "lon" not in df.columns and "long" in df.columns:
         rename_map["long"] = "lon"
     

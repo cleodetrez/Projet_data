@@ -27,6 +27,11 @@ if config_path.exists():
             caract_csv_url_2020,
             caract_csv_url_2022,
             caract_csv_url_2024,
+            usager_csv_url_2020,
+            usager_csv_url_2021,
+            usager_csv_url_2022,
+            usager_csv_url_2023,
+            usager_csv_url_2024,
             raw_dir,
         )
     except ImportError:
@@ -40,6 +45,11 @@ if config_path.exists():
         caract_csv_url_2020 = ""  # type: ignore[assignment]
         caract_csv_url_2022 = ""  # type: ignore[assignment]
         caract_csv_url_2024 = ""  # type: ignore[assignment]
+        usager_csv_url_2020 = ""  # type: ignore[assignment]
+        usager_csv_url_2021 = ""  # type: ignore[assignment]
+        usager_csv_url_2022 = ""  # type: ignore[assignment]
+        usager_csv_url_2023 = ""  # type: ignore[assignment]
+        usager_csv_url_2024 = ""  # type: ignore[assignment]
         raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
 else:
     caract_csv_url = ""  # type: ignore[assignment]
@@ -49,6 +59,11 @@ else:
     caract_csv_url_2020 = ""  # type: ignore[assignment]
     caract_csv_url_2022 = ""  # type: ignore[assignment]
     caract_csv_url_2024 = ""  # type: ignore[assignment]
+    usager_csv_url_2020 = ""  # type: ignore[assignment]
+    usager_csv_url_2021 = ""  # type: ignore[assignment]
+    usager_csv_url_2022 = ""  # type: ignore[assignment]
+    usager_csv_url_2023 = ""  # type: ignore[assignment]
+    usager_csv_url_2024 = ""  # type: ignore[assignment]
     raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------
@@ -95,13 +110,13 @@ def dl_csv(url: str, filename: str) -> pd.DataFrame:
     """télécharge (avec cache) un csv puis le charge en dataframe."""
     file_path = Path(raw_dir) / filename
     if file_path.exists():
-        logger.info("fichier %s trouvé, chargement depuis le cache.", filename)
+        logger.info("fichier %s trouve, chargement depuis le cache.", filename)
         return pd.read_csv(file_path, low_memory=False, sep=";")
 
     if not url:
-        raise ValueError(f"url vide pour le fichier demandé: {filename}")
+        raise ValueError(f"url vide pour le fichier demande: {filename}")
 
-    logger.info("téléchargement de %s...", filename)
+    logger.info("telechargement de %s...", filename)
     try:
         resp = requests.get(url, stream=True, timeout=60, headers=HEADERS)
         resp.raise_for_status()
@@ -111,14 +126,14 @@ def dl_csv(url: str, filename: str) -> pd.DataFrame:
                 if chunk:
                     fobj.write(chunk)
 
-        logger.info("téléchargement de %s terminé.", filename)
+        logger.info("telechargement de %s termine.", filename)
         return pd.read_csv(file_path, low_memory=False, sep=";")
     except requests.RequestException as err:
-        logger.error("erreur lors du téléchargement de %s: %s", filename, err)
+        logger.error("erreur lors du telechargement de %s: %s", filename, err)
         raise
     except (OSError, UnicodeDecodeError, pd.errors.ParserError) as err:
         logger.error("erreur lecture du fichier %s: %s", filename, err)
-        logger.error("le contenu téléchargé n'est peut-être pas un csv valide.")
+        logger.error("le contenu telecharge n'est peut-etre pas un csv valide.")
         raise
 
 
@@ -160,7 +175,7 @@ def save_to_db(df: pd.DataFrame, table_name: str) -> None:
 
 
 def get_caract_2023(_force_download: bool = False) -> pd.DataFrame:
-    """charge les caractéristiques 2023 nettoyées."""
+    """charge les caracteristiques 2023 nettoyees."""
     # Charger le fichier nettoyé si disponible, sinon le fichier brut
     cleaned_path = raw_dir.parent / "cleaned" / "caract_clean_2023.csv"
     if cleaned_path.exists():
@@ -234,6 +249,35 @@ def get_radar_2021(_force_download: bool = False) -> pd.DataFrame:
     save_to_db(df, "radars")
     return df
 
+# ------------------------------------------------------------------
+# usager (nouveau jeu de données multi-année)
+# ------------------------------------------------------------------
+def _get_usager_generic(year: int, url: str) -> pd.DataFrame:
+    """Télécharge (si besoin) le CSV usagers d'une année et le retourne brut."""
+    filename = f"usagers-{year}.csv"
+    cleaned_path = raw_dir.parent / "cleaned" / f"usager_clean_{year}.csv"
+    raw_path = raw_dir / filename
+    if cleaned_path.exists():
+        return pd.read_csv(cleaned_path, low_memory=False, sep="," if cleaned_path.suffix == ".csv" else ";")
+    if raw_path.exists():
+        return pd.read_csv(raw_path, low_memory=False, sep=";")
+    return dl_csv(url, filename)
+
+def get_usager_2020() -> pd.DataFrame:
+    return _get_usager_generic(2020, usager_csv_url_2020)
+
+def get_usager_2021() -> pd.DataFrame:
+    return _get_usager_generic(2021, usager_csv_url_2021)
+
+def get_usager_2022() -> pd.DataFrame:
+    return _get_usager_generic(2022, usager_csv_url_2022)
+
+def get_usager_2023() -> pd.DataFrame:
+    return _get_usager_generic(2023, usager_csv_url_2023)
+
+def get_usager_2024() -> pd.DataFrame:
+    return _get_usager_generic(2024, usager_csv_url_2024)
+
 
 def query_db(query: str, params: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
     """exécute une requête sql et retourne un dataframe."""
@@ -255,21 +299,59 @@ if __name__ == "__main__":
     try:
         init_db()
 
-        df_caract = get_caract_2023()
-        logger.info(
-            "données caractéristiques 2023 chargées : %d lignes, %d colonnes.",
-            df_caract.shape[0],
-            df_caract.shape[1],
-        )
+        # Chargement multi-année des caractéristiques
+        caract_loaders = {
+            2020: get_caract_2020,
+            2021: get_caract_2021,
+            2022: get_caract_2022,
+            2023: get_caract_2023,
+            2024: get_caract_2024,
+        }
+        for year, fn in caract_loaders.items():
+            try:
+                df = fn()
+                logger.info(
+                    "caracteristiques %s : %d lignes, %d colonnes.",
+                    year,
+                    df.shape[0],
+                    df.shape[1],
+                )
+            except Exception as e:
+                logger.warning("echec chargement caracteristiques %s : %s", year, e)
 
-        df_radar = get_radar_2023()
-        logger.info(
-            "données radars 2023 chargées : %d lignes, %d colonnes.",
-            df_radar.shape[0],
-            df_radar.shape[1],
-        )
+        # Chargement multi-année des radars (années disponibles)
+        radar_loaders = {2021: get_radar_2021, 2023: get_radar_2023}
+        for year, fn in radar_loaders.items():
+            try:
+                df = fn()
+                logger.info(
+                    "radars %s : %d lignes, %d colonnes.",
+                    year,
+                    df.shape[0],
+                    df.shape[1],
+                )
+            except Exception as e:
+                logger.warning("echec chargement radars %s : %s", year, e)
 
-        paris = get_accidents_by_department("75")
-        logger.info("nombre d'accidents à paris : %d", len(paris))
+        # Chargement multi-année des usagers
+        usager_loaders = {
+            2020: get_usager_2020,
+            2021: get_usager_2021,
+            2022: get_usager_2022,
+            2023: get_usager_2023,
+            2024: get_usager_2024,
+        }
+        for year, fn in usager_loaders.items():
+            try:
+                df = fn()
+                logger.info(
+                    "usagers %s : %d lignes, %d colonnes.",
+                    year,
+                    df.shape[0],
+                    df.shape[1],
+                )
+            except Exception as e:
+                logger.warning("echec chargement usagers %s : %s", year, e)
+
     except Exception as err:  # garder large ici pour un script cli
-        logger.error("erreur : %s", err)
+        logger.error("erreur globale get_data : %s", err)

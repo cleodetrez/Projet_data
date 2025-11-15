@@ -586,20 +586,32 @@ def _make_speed_histogram(year=2023):
         return fig
 
 
-def _make_time_series(year=2023, agg_filter: int | str | None = None, lum_filter: int | str | None = None, atm_filter: int | str | None = None, unit: str = "hour"):
+def _make_time_series(
+    year=2023,
+    agg_filter: int | str | None = None,
+    lum_filter: int | str | None = None,
+    atm_filter: int | str | None = None,
+    unit: str = "hour",
+    sexe_filter: int | None = None,
+    trajet_filter: int | None = None,
+    birth_year_min: int | None = None,
+    birth_year_max: int | None = None,
+):
     """courbe : évolution du nombre d'accidents par heure/jour/mois.
 
     unit: "hour" | "day" | "month"
-    year: 2021 | 2023 | "all" pour agréger plusieurs années.
-    agg_filter: 1 (agglomération) | 2 (hors agglomération) | None
-    lum_filter: 1-5 (conditions de luminosité) | None
+    year: 2020..2024 | "all" pour agréger plusieurs années.
+    agg_filter: 1 (agglomération) | 2 (hors agglomération)
+    lum_filter: 1-5 (conditions de luminosité)
+    usager filters: sexe (1/2), trajet (int), age range
     """
     try:
         unit = unit or "hour"
         unit = unit.lower()
 
         def _query_one(y: int) -> pd.DataFrame:
-            table_name = f"caracteristiques_{y}"
+            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max))
+            table_name = f"caract_usager_{y}" if use_join else f"caracteristiques_{y}"
             params: dict = {}
             where_parts = []
 
@@ -623,6 +635,18 @@ def _make_time_series(year=2023, agg_filter: int | str | None = None, lum_filter
             if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
                 where_parts.append("CAST(atm AS INTEGER) = :atm")
                 params["atm"] = atm_filter
+
+            # usager filters
+            if sexe_filter is not None:
+                where_parts.append("CAST(sexe AS INTEGER) = :sexe")
+                params["sexe"] = sexe_filter
+            if trajet_filter is not None:
+                where_parts.append("CAST(trajet AS INTEGER) = :trajet")
+                params["trajet"] = trajet_filter
+            if (birth_year_min is not None) and (birth_year_max is not None):
+                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                params["birth_year_min"] = birth_year_min
+                params["birth_year_max"] = birth_year_max
 
             where_clause = " AND ".join(where_parts) if where_parts else "1=1"
             sql = (
@@ -758,16 +782,24 @@ def _make_time_series(year=2023, agg_filter: int | str | None = None, lum_filter
         return fig
 
 
-def _make_accidents_pie_chart(year=2023, agg_filter: int | str | None = None, lum_filter: int | str | None = None, atm_filter: int | str | None = None):
+def _make_accidents_pie_chart(
+    year=2023,
+    agg_filter: int | str | None = None,
+    lum_filter: int | str | None = None,
+    atm_filter: int | str | None = None,
+    sexe_filter: int | None = None,
+    trajet_filter: int | None = None,
+    birth_year_min: int | None = None,
+    birth_year_max: int | None = None,
+):
     """camembert : distribution des accidents par type d'agglomération.
 
-    year: 2021 | 2023 | "all" pour agréger les deux années.
-    agg_filter: 1 (agglomération) | 2 (hors agglomération) | "all" | None.
-    lum_filter: 1-5 (conditions de luminosité) | None
+    year: 2020..2024 | "all" pour agréger plusieurs années.
     """
     try:
         def _query_one(y: int) -> pd.DataFrame:
-            table_name = f"caracteristiques_{y}"
+            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max))
+            table_name = f"caract_usager_{y}" if use_join else f"caracteristiques_{y}"
             where_parts = ["agg IS NOT NULL"]
             params = {}
             if agg_filter in (1, 2):
@@ -779,6 +811,16 @@ def _make_accidents_pie_chart(year=2023, agg_filter: int | str | None = None, lu
             if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
                 where_parts.append("CAST(atm AS INTEGER) = :atm")
                 params["atm"] = atm_filter
+            if sexe_filter is not None:
+                where_parts.append("CAST(sexe AS INTEGER) = :sexe")
+                params["sexe"] = sexe_filter
+            if trajet_filter is not None:
+                where_parts.append("CAST(trajet AS INTEGER) = :trajet")
+                params["trajet"] = trajet_filter
+            if (birth_year_min is not None) and (birth_year_max is not None):
+                where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
+                params["birth_year_min"] = birth_year_min
+                params["birth_year_max"] = birth_year_max
             where_clause = " AND ".join(where_parts)
             sql = (
                 f"SELECT agg, COUNT(*) AS count "
@@ -1141,11 +1183,43 @@ graph_page = html.Div(
                         ),
                         html.Label("sexe", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
                         dcc.Dropdown(
-                            id="filter-sexe",
-                            options=[{"label": "tous", "value": "all"}, {"label": "homme", "value": "H"}, {"label": "femme", "value": "F"}],
+                            id="filter-usager-sexe",
+                            options=[
+                                {"label": "tous", "value": "all"},
+                                {"label": "homme (1)", "value": 1},
+                                {"label": "femme (2)", "value": 2},
+                            ],
                             value="all",
                             clearable=False,
                             style={"marginBottom": "12px"},
+                        ),
+                        html.Label("trajet", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.Dropdown(
+                            id="filter-usager-trajet",
+                            options=[
+                                {"label": "tous", "value": "all"},
+                                {"label": "1", "value": 1},
+                                {"label": "2", "value": 2},
+                                {"label": "3", "value": 3},
+                                {"label": "4", "value": 4},
+                                {"label": "5", "value": 5},
+                                {"label": "6", "value": 6},
+                                {"label": "7", "value": 7},
+                                {"label": "8", "value": 8},
+                                {"label": "9", "value": 9},
+                            ],
+                            value="all",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
+                        ),
+                        html.Label("année de naissance", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.RangeSlider(
+                            id="filter-usager-age",
+                            min=1914,
+                            max=2024,
+                            step=1,
+                            value=[1914, 2024],
+                            tooltip={"placement": "bottom", "always_visible": False},
                         ),
                         html.Label("année", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
                         dcc.Dropdown(
@@ -1524,12 +1598,15 @@ def update_histogram_year(*_args):
         Input("filter-agglomeration", "value"),
         Input("filter-luminosite", "value"),
         Input("filter-atm", "value"),
+        Input("filter-usager-sexe", "value"),
+        Input("filter-usager-trajet", "value"),
+        Input("filter-usager-age", "value"),
         Input("btn-ts-hour", "n_clicks"),
         Input("btn-ts-day", "n_clicks"),
         Input("btn-ts-month", "n_clicks"),
     ],
 )
-def update_graph_page_charts(annee, agg_value, lum_value, atm_value, _n_h, _n_d, _n_m):
+def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value, trajet_value, age_range, _n_h, _n_d, _n_m):
     """met à jour la courbe temporelle (heures/jours/mois) et le camembert."""
     ctx = dash.callback_context
     year = annee
@@ -1558,6 +1635,13 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, _n_h, _n_d,
     else:
         atm_filter = None
 
+    # normaliser filtres usagers
+    sexe_filter = None if (sexe_value in (None, "all")) else int(sexe_value)
+    trajet_filter = None if (trajet_value in (None, "all")) else int(trajet_value)
+    birth_year_min, birth_year_max = (None, None)
+    if isinstance(age_range, (list, tuple)) and len(age_range) == 2:
+        birth_year_min, birth_year_max = int(age_range[0]), int(age_range[1])
+
     # déterminer l'unité depuis le bouton cliqué
     unit = "hour"
     if ctx.triggered:
@@ -1568,8 +1652,27 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, _n_h, _n_d,
             unit = "month"
 
     return (
-        _make_time_series(year, agg_filter=agg_filter, lum_filter=lum_filter, atm_filter=atm_filter, unit=unit),
-        _make_accidents_pie_chart(year, agg_filter=agg_filter, lum_filter=lum_filter, atm_filter=atm_filter),
+        _make_time_series(
+            year,
+            agg_filter=agg_filter,
+            lum_filter=lum_filter,
+            atm_filter=atm_filter,
+            unit=unit,
+            sexe_filter=sexe_filter,
+            trajet_filter=trajet_filter,
+            birth_year_min=birth_year_min,
+            birth_year_max=birth_year_max,
+        ),
+        _make_accidents_pie_chart(
+            year,
+            agg_filter=agg_filter,
+            lum_filter=lum_filter,
+            atm_filter=atm_filter,
+            sexe_filter=sexe_filter,
+            trajet_filter=trajet_filter,
+            birth_year_min=birth_year_min,
+            birth_year_max=birth_year_max,
+        ),
     )
 
 
@@ -1579,9 +1682,12 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, _n_h, _n_d,
     Output("filter-agglomeration", "value"),
     Output("filter-luminosite", "value"),
     Output("filter-atm", "value"),
+    Output("filter-usager-sexe", "value"),
+    Output("filter-usager-trajet", "value"),
+    Output("filter-usager-age", "value"),
     Input("btn-reset-filters", "n_clicks"),
     prevent_initial_call=True,
 )
 def reset_graph_filters(_n_clicks):
-    # Valeurs par défaut: toutes
-    return "all", "all", "all", "all"
+    # Valeurs par défaut
+    return "all", "all", "all", "all", "all", "all", [1914, 2024]
