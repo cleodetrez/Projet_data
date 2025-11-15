@@ -129,6 +129,23 @@ def load_csv_to_db(retries=3):
                 # Drop si existe
                 conn.execute(text(f"DROP TABLE IF EXISTS {joined_table}"))
                 
+                # Détecter le nom de la colonne d'identifiant dans caracteristiques
+                caract_csv = all_files[caract_table]
+                df_caract_sample = pd.read_csv(caract_csv, nrows=0)
+                
+                # Chercher la colonne d'identifiant (acc_id, Num_Acc, ou Accident_Id)
+                id_col = None
+                for possible_id in ["acc_id", "Num_Acc", "Accident_Id"]:
+                    if possible_id in df_caract_sample.columns:
+                        id_col = possible_id
+                        break
+                
+                if not id_col:
+                    logger.error(f"Aucune colonne d'identifiant trouvée dans {caract_table}")
+                    continue
+                
+                logger.info(f"Utilisation de la colonne '{id_col}' pour les jointures")
+                
                 # Création via LEFT JOINs pour ne pas perdre d'accidents
                 # Vérifier les colonnes disponibles dans vehicule pour cette année
                 vehicule_cols = []
@@ -146,15 +163,15 @@ def load_csv_to_db(retries=3):
                     CREATE TABLE {joined_table} AS
                     SELECT {select_clause}
                     FROM {caract_table} c
-                    LEFT JOIN {usager_table} u ON c.acc_id = u.Num_Acc
-                    LEFT JOIN {vehicule_table} v ON c.acc_id = v.Num_Acc
+                    LEFT JOIN {usager_table} u ON c.{id_col} = u.Num_Acc
+                    LEFT JOIN {vehicule_table} v ON c.{id_col} = v.Num_Acc
                     """
                 elif has_usager:
                     join_sql = f"""
                     CREATE TABLE {joined_table} AS
                     SELECT c.*, u.sexe, u.an_nais, u.trajet
                     FROM {caract_table} c
-                    LEFT JOIN {usager_table} u ON c.acc_id = u.Num_Acc
+                    LEFT JOIN {usager_table} u ON c.{id_col} = u.Num_Acc
                     """
                 else:  # has_vehicule only
                     vehicule_select = ", ".join([f"v.{col}" for col in vehicule_cols])
@@ -162,7 +179,7 @@ def load_csv_to_db(retries=3):
                     CREATE TABLE {joined_table} AS
                     SELECT c.*, {vehicule_select}
                     FROM {caract_table} c
-                    LEFT JOIN {vehicule_table} v ON c.acc_id = v.Num_Acc
+                    LEFT JOIN {vehicule_table} v ON c.{id_col} = v.Num_Acc
                     """
                 
                 conn.execute(text(join_sql))
