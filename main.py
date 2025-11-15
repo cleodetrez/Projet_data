@@ -27,7 +27,10 @@ def setup_data():
         from src.utils.get_data import (
             get_caract_2020, get_caract_2021, get_caract_2022, 
             get_caract_2023, get_caract_2024,
-            get_radar_2021, get_radar_2023
+            get_radar_2021, get_radar_2023,
+            get_usager_2020, get_usager_2021, get_usager_2022,
+            get_usager_2023, get_usager_2024,
+            get_vehicule_2020, get_vehicule_2021, get_vehicule_2022, get_vehicule_2023
         )
         from src.utils.clean_caract_2020 import clean_caracteristiques as clean_caract_2020
         from src.utils.clean_caract_2021 import clean_caracteristiques as clean_caract_2021
@@ -88,11 +91,26 @@ def setup_data():
             2024: clean_usager_2024,
         }
         
+        usager_getters = {
+            2020: get_usager_2020,
+            2021: get_usager_2021,
+            2022: get_usager_2022,
+            2023: get_usager_2023,
+            2024: get_usager_2024,
+        }
+        
         vehicule_cleaners = {
             2020: clean_vehicule_2020,
             2021: clean_vehicule_2021,
             2022: clean_vehicule_2022,
             2023: clean_vehicule_2023,
+        }
+        
+        vehicule_getters = {
+            2020: get_vehicule_2020,
+            2021: get_vehicule_2021,
+            2022: get_vehicule_2022,
+            2023: get_vehicule_2023,
         }
         
         # ============ Nettoyer CARACTÉRISTIQUES (5 années) ============
@@ -157,6 +175,15 @@ def setup_data():
                 logger.info(f"usager_clean_{year}.csv existe deja")
                 continue
             
+            if not raw_path.exists():
+                logger.info(f"Telechargement usagers-{year}.csv...")
+                try:
+                    usager_getters[year]()
+                    logger.info(f"Telechargement usagers {year} termine")
+                except Exception as e:
+                    logger.error(f" Erreur telechargement usagers {year}: {e}")
+                    continue
+            
             logger.info(f" Nettoyage usagers {year}...")
             try:
                 usager_cleaners[year]()
@@ -175,8 +202,13 @@ def setup_data():
                 continue
             
             if not raw_path.exists():
-                logger.warning(f"Fichier brut vehicules-{year}.csv manquant, nettoyage ignoré")
-                continue
+                logger.info(f"Telechargement vehicules-{year}.csv...")
+                try:
+                    vehicule_getters[year]()
+                    logger.info(f"Telechargement vehicules {year} termine")
+                except Exception as e:
+                    logger.error(f" Erreur telechargement vehicules {year}: {e}")
+                    continue
             
             logger.info(f" Nettoyage vehicules {year}...")
             try:
@@ -186,15 +218,23 @@ def setup_data():
                 logger.error(f" Erreur nettoyage vehicules {year}: {e}")
         
         # ============ Charger tout dans la DB ============
+        # TOUJOURS charger la DB (même si les CSV existent déjà)
+        # car les tables jointes doivent être créées
         logger.info("Chargement en base de donnees...")
-        load_csv_to_db()
-        logger.info("Donnees pretes!")
+        try:
+            load_csv_to_db()
+            logger.info("Donnees pretes!")
+        except Exception as e:
+            logger.error(f"Erreur chargement DB: {e}")
+            import traceback
+            traceback.print_exc()
         
     except Exception as e:
         logger.error(f"Erreur setup donnees: {e}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)
+        logger.warning("Tentative de lancement du dashboard malgre l'erreur...")
+        # Ne pas exit - laisser le dashboard se lancer quand même
 
 
 # ============================================================================
