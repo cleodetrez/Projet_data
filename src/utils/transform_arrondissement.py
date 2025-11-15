@@ -1,4 +1,5 @@
 """transformation des codes d'arrondissement vers codes insee commune."""
+# pylint: disable=duplicate-code  # R0801 warnings are from other files in utils module
 
 from __future__ import annotations
 
