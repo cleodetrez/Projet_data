@@ -158,7 +158,7 @@ def load_csv_to_db(retries=3):
                 # Construire le SELECT dynamiquement selon les colonnes disponibles
                 if has_usager and has_vehicule:
                     vehicule_select = ", ".join([f"v.{col}" for col in vehicule_cols]) if vehicule_cols else ""
-                    select_clause = f"c.*, u.sexe, u.an_nais, u.trajet{', ' + vehicule_select if vehicule_select else ''}"
+                    select_clause = f"c.*, u.sexe, u.an_nais, u.trajet, u.grav{', ' + vehicule_select if vehicule_select else ''}"
                     join_sql = f"""
                     CREATE TABLE {joined_table} AS
                     SELECT {select_clause}
@@ -169,7 +169,7 @@ def load_csv_to_db(retries=3):
                 elif has_usager:
                     join_sql = f"""
                     CREATE TABLE {joined_table} AS
-                    SELECT c.*, u.sexe, u.an_nais, u.trajet
+                    SELECT c.*, u.sexe, u.an_nais, u.trajet, u.grav
                     FROM {caract_table} c
                     LEFT JOIN {usager_table} u ON c.{id_col} = u.Num_Acc
                     """

@@ -8,7 +8,7 @@ RAW = ROOT / "data" / "raw" / "usagers-2020.csv"
 OUT = ROOT / "data" / "cleaned" / "usager_clean_2020.csv"
 
 # Colonnes demandées: uniquement Num_Acc, sexe, age, trajet
-KEEP = ["Num_Acc", "sexe", "an_nais", "trajet"]
+KEEP = ["Num_Acc", "sexe", "an_nais", "trajet", "grav"]
 
 def clean_usager_2020() -> pd.DataFrame:
     """Nettoie usagers 2020: garde Num_Acc, sexe, an_nais, trajet."""

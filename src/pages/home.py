@@ -769,6 +769,7 @@ def _make_time_series(
     unit: str = "hour",
     sexe_filter: int | None = None,
     trajet_filter: int | None = None,
+    grav_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
     catv_filter: int | None = None,
@@ -780,7 +781,7 @@ def _make_time_series(
     year: 2020..2024 | "all" pour agréger plusieurs années.
     agg_filter: 1 (agglomération) | 2 (hors agglomération)
     lum_filter: 1-5 (conditions de luminosité)
-    usager filters: sexe (1/2), trajet (int), age range
+    usager filters: sexe (1/2), trajet (int), grav (1-4), age range
     """
     try:
         unit = unit or "hour"
@@ -792,6 +793,7 @@ def _make_time_series(
                 for v in (
                     sexe_filter,
                     trajet_filter,
+                    grav_filter,
                     birth_year_min,
                     birth_year_max,
                     catv_filter,
@@ -803,7 +805,7 @@ def _make_time_series(
                 # Ignorer les filtres vehicule pour 2024
                 use_join_usager = any(
                     v is not None
-                    for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max)
+                    for v in (sexe_filter, trajet_filter, grav_filter, birth_year_min, birth_year_max)
                 )
                 table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
             else:
@@ -848,6 +850,9 @@ def _make_time_series(
             if trajet_filter is not None:
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
+            if grav_filter is not None:
+                where_parts.append("CAST(grav AS INTEGER) = :grav")
+                params["grav"] = grav_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
                 where_parts.append(
                     "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
@@ -1036,6 +1041,7 @@ def _make_accidents_pie_chart(
     atm_filter: int | str | None = None,
     sexe_filter: int | None = None,
     trajet_filter: int | None = None,
+    grav_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
     catv_filter: int | None = None,
@@ -1071,6 +1077,9 @@ def _make_accidents_pie_chart(
             if trajet_filter is not None:
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
+            if grav_filter is not None:
+                where_parts.append("CAST(grav AS INTEGER) = :grav")
+                params["grav"] = grav_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
                 where_parts.append(
                     "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
@@ -1179,6 +1188,7 @@ def _make_catv_pie_chart(
     atm_filter: int | str | None = None,
     sexe_filter: int | None = None,
     trajet_filter: int | None = None,
+    grav_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
     catv_filter: int | None = None,
@@ -1211,6 +1221,9 @@ def _make_catv_pie_chart(
             if trajet_filter is not None:
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
+            if grav_filter is not None:
+                where_parts.append("CAST(grav AS INTEGER) = :grav")
+                params["grav"] = grav_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
                 where_parts.append(
                     "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
@@ -1334,6 +1347,7 @@ def _make_motor_pie_chart(
     atm_filter: int | str | None = None,
     sexe_filter: int | None = None,
     trajet_filter: int | None = None,
+    grav_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
     catv_filter: int | None = None,
@@ -1366,6 +1380,9 @@ def _make_motor_pie_chart(
             if trajet_filter is not None:
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
+            if grav_filter is not None:
+                where_parts.append("CAST(grav AS INTEGER) = :grav")
+                params["grav"] = grav_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
                 where_parts.append(
                     "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
@@ -1469,6 +1486,7 @@ def _make_catv_gender_bar_chart(
     atm_filter: int | str | None = None,
     sexe_filter: int | None = None,
     trajet_filter: int | None = None,
+    grav_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
     catv_filter: int | None = None,
@@ -1487,6 +1505,7 @@ def _make_catv_gender_bar_chart(
                 for v in (
                     sexe_filter,
                     trajet_filter,
+                    grav_filter,
                     birth_year_min,
                     birth_year_max,
                     catv_filter,
@@ -1511,6 +1530,9 @@ def _make_catv_gender_bar_chart(
             if trajet_filter is not None:
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
+            if grav_filter is not None:
+                where_parts.append("CAST(grav AS INTEGER) = :grav")
+                params["grav"] = grav_filter
             if (birth_year_min is not None) and (birth_year_max is not None):
                 where_parts.append(
                     "CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max"
@@ -1696,6 +1718,7 @@ def _make_age_histogram(
     atm_filter: int | str | None = None,
     sexe_filter: int | None = None,
     trajet_filter: int | None = None,
+    grav_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
     catv_filter: int | None = None,
@@ -1734,6 +1757,9 @@ def _make_age_histogram(
             if trajet_filter is not None:
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
+            if grav_filter is not None:
+                where_parts.append("CAST(grav AS INTEGER) = :grav")
+                params["grav"] = grav_filter
             # NE PAS filtrer par birth_year dans la requête SQL
             if y != 2024:
                 if catv_filter is not None:
@@ -1910,6 +1936,7 @@ def _make_age_tranche_histogram(
     atm_filter: int | str | None = None,
     sexe_filter: int | None = None,
     trajet_filter: int | None = None,
+    grav_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
     catv_filter: int | None = None,
@@ -1946,6 +1973,9 @@ def _make_age_tranche_histogram(
             if trajet_filter is not None:
                 where_parts.append("CAST(trajet AS INTEGER) = :trajet")
                 params["trajet"] = trajet_filter
+            if grav_filter is not None:
+                where_parts.append("CAST(grav AS INTEGER) = :grav")
+                params["grav"] = grav_filter
             # NE PAS filtrer par birth_year dans la requête SQL
             if y != 2024:
                 if catv_filter is not None:
@@ -2424,6 +2454,23 @@ graph_page = html.Div(
                                 {"label": "professionnel", "value": 4},
                                 {"label": "promenade - loisirs", "value": 5},
                                 {"label": "autre", "value": 9},
+                            ],
+                            value="all",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
+                        ),
+                        html.Label(
+                            "gravité de blessure",
+                            style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
+                        ),
+                        dcc.Dropdown(
+                            id="filter-usager-grav",
+                            options=[
+                                {"label": "tous", "value": "all"},
+                                {"label": "indemne", "value": 1},
+                                {"label": "tué", "value": 2},
+                                {"label": "blessé hospitalisé", "value": 3},
+                                {"label": "blessé léger", "value": 4},
                             ],
                             value="all",
                             clearable=False,
@@ -3191,6 +3238,7 @@ def update_histogram_year(*_args):
         Input("filter-atm", "value"),
         Input("filter-usager-sexe", "value"),
         Input("filter-usager-trajet", "value"),
+        Input("filter-usager-grav", "value"),
         Input("filter-usager-age-min", "value"),
         Input("filter-usager-age-max", "value"),
         Input("filter-vehicule-catv", "value"),
@@ -3210,6 +3258,7 @@ def update_graph_page_charts(
     atm_value,
     sexe_value,
     trajet_value,
+    grav_value,
     age_min,
     age_max,
     catv_value,
@@ -3258,6 +3307,7 @@ def update_graph_page_charts(
     # normaliser filtres usagers
     sexe_filter = None if (sexe_value in (None, "all")) else int(sexe_value)
     trajet_filter = None if (trajet_value in (None, "all")) else int(trajet_value)
+    grav_filter = None if (grav_value in (None, "all")) else int(grav_value)
     
     # Convertir les âges en années de naissance
     birth_year_min, birth_year_max = (None, None)
@@ -3295,6 +3345,7 @@ def update_graph_page_charts(
             unit=unit,
             sexe_filter=sexe_filter,
             trajet_filter=trajet_filter,
+            grav_filter=grav_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
             catv_filter=catv_filter,
@@ -3307,6 +3358,7 @@ def update_graph_page_charts(
             atm_filter=atm_filter,
             sexe_filter=sexe_filter,
             trajet_filter=trajet_filter,
+            grav_filter=grav_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
             catv_filter=catv_filter,
@@ -3319,6 +3371,7 @@ def update_graph_page_charts(
             atm_filter=atm_filter,
             sexe_filter=sexe_filter,
             trajet_filter=trajet_filter,
+            grav_filter=grav_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
             catv_filter=catv_filter,
@@ -3331,6 +3384,7 @@ def update_graph_page_charts(
             atm_filter=atm_filter,
             sexe_filter=sexe_filter,
             trajet_filter=trajet_filter,
+            grav_filter=grav_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
             catv_filter=catv_filter,
@@ -3343,6 +3397,7 @@ def update_graph_page_charts(
             atm_filter=atm_filter,
             sexe_filter=sexe_filter,
             trajet_filter=trajet_filter,
+            grav_filter=grav_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
             catv_filter=catv_filter,
@@ -3355,6 +3410,7 @@ def update_graph_page_charts(
             atm_filter=atm_filter,
             sexe_filter=sexe_filter,
             trajet_filter=trajet_filter,
+            grav_filter=grav_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
             catv_filter=catv_filter,
@@ -3366,6 +3422,7 @@ def update_graph_page_charts(
             atm_filter=atm_filter,
             sexe_filter=sexe_filter,
             trajet_filter=trajet_filter,
+            grav_filter=grav_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
             catv_filter=catv_filter,

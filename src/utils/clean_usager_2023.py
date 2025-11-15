@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data" / "raw" / "usagers-2023.csv"
 OUT = ROOT / "data" / "cleaned" / "usager_clean_2023.csv"
 
-KEEP = ["Num_Acc", "sexe", "an_nais", "trajet"]
+KEEP = ["Num_Acc", "sexe", "an_nais", "trajet", "grav"]
 
 def clean_usager_2023() -> pd.DataFrame:
     """Nettoie usagers 2023: garde Num_Acc, sexe, an_nais, trajet."""
