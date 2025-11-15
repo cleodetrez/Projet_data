@@ -1110,6 +1110,8 @@ def _make_accidents_pie_chart(
 
         sexe_labels = {1: "homme", 2: "femme"}
         df["sexe_label"] = df["sexe"].map(sexe_labels)
+        # Filtrer les valeurs null/NaN
+        df = df.dropna(subset=["sexe_label"])
         df = df.sort_values(by="count", ascending=False)
 
         fig = go.Figure(
@@ -1694,7 +1696,7 @@ def _make_age_histogram(
     catv_filter: int | None = None,
     motor_filter: int | None = None,
 ):
-    """histogramme de distribution par année de naissance."""
+    """histogramme de distribution par âge des conducteurs."""
     try:
 
         def _query_one(y: int) -> pd.DataFrame:
@@ -1735,7 +1737,7 @@ def _make_age_histogram(
                     where_parts.append("CAST(motor AS INTEGER) = :motor")
                     params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
-            sql = f"SELECT an_nais, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY an_nais"
+            sql = f"SELECT an_nais, annee, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY an_nais, annee"
             return query_db(sql, params)
 
         if isinstance(year, str) and year == "all":
@@ -1746,7 +1748,6 @@ def _make_age_histogram(
                     dfs.append(df)
             if dfs:
                 df = pd.concat(dfs, ignore_index=True)
-                df = df.groupby("an_nais", as_index=False).agg({"count": "sum"})
             else:
                 df = pd.DataFrame()
         else:
@@ -1764,32 +1765,41 @@ def _make_age_histogram(
             )
             return fig
 
-        # Convertir an_nais en entier et calculer l'âge
+        # Convertir an_nais et annee en entiers et calculer l'âge
         df["an_nais"] = pd.to_numeric(df["an_nais"], errors="coerce")
-        df = df.dropna(subset=["an_nais"])
+        df["annee"] = pd.to_numeric(df["annee"], errors="coerce")
+        df = df.dropna(subset=["an_nais", "annee"])
         df["an_nais"] = df["an_nais"].astype(int)
+        df["annee"] = df["annee"].astype(int)
         df = df[(df["an_nais"] >= 1900) & (df["an_nais"] <= 2024)]  # Filtrer les années aberrantes
-        df = df.sort_values("an_nais")
+        
+        # Calculer l'âge au moment de l'accident
+        df["age"] = df["annee"] - df["an_nais"]
+        df = df[(df["age"] >= 0) & (df["age"] <= 120)]  # Filtrer les âges aberrants
+        
+        # Agréger par âge
+        df = df.groupby("age", as_index=False).agg({"count": "sum"})
+        df = df.sort_values("age")
 
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                x=df["an_nais"],
+                x=df["age"],
                 y=df["count"],
                 marker={"color": "#3ae7ff", "line": {"color": "#1a8fa8", "width": 1}},
-                hovertemplate="<b>Année: %{x}</b><br>Accidents: %{y}<extra></extra>",
+                hovertemplate="<b>Âge: %{x} ans</b><br>Accidents: %{y}<extra></extra>",
             )
         )
 
         fig.update_layout(
             title={
-                "text": "RÉPARTITION DES CONDUCTEURS PAR ANNÉE DE NAISSANCE",
+                "text": "RÉPARTITION DES CONDUCTEURS PAR ÂGE",
                 "x": 0.5,
                 "xanchor": "center",
                 "font": {"size": 16, "color": "#e6e9f2"},
             },
             xaxis={
-                "title": "Année de naissance",
+                "title": "Âge (années)",
                 "gridcolor": "#2d3548",
                 "tickfont": {"color": "#e6e9f2"},
                 "tickmode": "linear",
@@ -2138,8 +2148,8 @@ graph_page = html.Div(
                             id="filter-usager-sexe",
                             options=[
                                 {"label": "tous", "value": "all"},
-                                {"label": "homme (1)", "value": 1},
-                                {"label": "femme (2)", "value": 2},
+                                {"label": "homme", "value": 1},
+                                {"label": "femme", "value": 2},
                             ],
                             value="all",
                             clearable=False,
@@ -2165,16 +2175,55 @@ graph_page = html.Div(
                             style={"marginBottom": "12px"},
                         ),
                         html.Label(
-                            "année de naissance",
+                            "âge du conducteur",
                             style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"},
                         ),
-                        dcc.RangeSlider(
-                            id="filter-usager-age",
-                            min=1925,
-                            max=2008,
-                            step=1,
-                            value=[1925, 2008],
-                            tooltip={"placement": "bottom", "always_visible": False},
+                        html.Div(
+                            [
+                                html.Div(
+                                    [
+                                        html.Label("Min:", style={"fontSize": "11px", "color": "#b9bfd3", "marginRight": "6px"}),
+                                        dcc.Input(
+                                            id="filter-usager-age-min",
+                                            type="number",
+                                            value=18,
+                                            min=0,
+                                            max=120,
+                                            style={
+                                                "width": "70px",
+                                                "padding": "6px",
+                                                "borderRadius": "4px",
+                                                "border": "1px solid var(--border)",
+                                                "backgroundColor": "#1a2035",
+                                                "color": "#e6e9f2",
+                                            },
+                                        ),
+                                    ],
+                                    style={"display": "flex", "alignItems": "center", "marginBottom": "8px"},
+                                ),
+                                html.Div(
+                                    [
+                                        html.Label("Max:", style={"fontSize": "11px", "color": "#b9bfd3", "marginRight": "6px"}),
+                                        dcc.Input(
+                                            id="filter-usager-age-max",
+                                            type="number",
+                                            value=99,
+                                            min=0,
+                                            max=120,
+                                            style={
+                                                "width": "70px",
+                                                "padding": "6px",
+                                                "borderRadius": "4px",
+                                                "border": "1px solid var(--border)",
+                                                "backgroundColor": "#1a2035",
+                                                "color": "#e6e9f2",
+                                            },
+                                        ),
+                                    ],
+                                    style={"display": "flex", "alignItems": "center"},
+                                ),
+                            ],
+                            style={"marginBottom": "12px"},
                         ),
                         html.Hr(style={"margin": "16px 0"}),
                         html.H6(
@@ -2185,6 +2234,29 @@ graph_page = html.Div(
                                 "marginBottom": "8px",
                                 "borderBottom": "2px solid #6b5bd3",
                                 "paddingBottom": "12px",
+                            },
+                        ),
+                        html.Div(
+                            [
+                                html.I(
+                                    className="fas fa-info-circle",
+                                    style={"marginRight": "6px", "color": "#ff9800"},
+                                ),
+                                html.Span(
+                                    "⚠️ Les données véhicule pour l'année 2024 ne sont pas disponibles.",
+                                    style={
+                                        "fontSize": "11px",
+                                        "color": "#ff9800",
+                                        "fontStyle": "italic",
+                                    },
+                                ),
+                            ],
+                            style={
+                                "backgroundColor": "rgba(255, 152, 0, 0.1)",
+                                "padding": "8px",
+                                "borderRadius": "6px",
+                                "marginBottom": "12px",
+                                "border": "1px solid rgba(255, 152, 0, 0.3)",
                             },
                         ),
                         html.Label(
@@ -2541,7 +2613,7 @@ graph_page = html.Div(
                         html.Div(
                             [
                                 html.H3(
-                                    "courbe 6 — répartition des conducteurs par année de naissance",
+                                    "courbe 6 — répartition des conducteurs par âge",
                                     style={
                                         "fontSize": "16px",
                                         "fontWeight": "600",
@@ -2828,7 +2900,8 @@ def update_histogram_year(*_args):
         Input("filter-atm", "value"),
         Input("filter-usager-sexe", "value"),
         Input("filter-usager-trajet", "value"),
-        Input("filter-usager-age", "value"),
+        Input("filter-usager-age-min", "value"),
+        Input("filter-usager-age-max", "value"),
         Input("filter-vehicule-catv", "value"),
         Input("filter-vehicule-motor", "value"),
         Input("btn-ts-hour", "n_clicks"),
@@ -2844,7 +2917,8 @@ def update_graph_page_charts(
     atm_value,
     sexe_value,
     trajet_value,
-    age_range,
+    age_min,
+    age_max,
     catv_value,
     motor_value,
     _n_h,
@@ -2883,9 +2957,13 @@ def update_graph_page_charts(
     # normaliser filtres usagers
     sexe_filter = None if (sexe_value in (None, "all")) else int(sexe_value)
     trajet_filter = None if (trajet_value in (None, "all")) else int(trajet_value)
+    
+    # Convertir les âges en années de naissance
     birth_year_min, birth_year_max = (None, None)
-    if isinstance(age_range, (list, tuple)) and len(age_range) == 2:
-        birth_year_min, birth_year_max = int(age_range[0]), int(age_range[1])
+    if age_min is not None and age_max is not None:
+        # Calculer l'année de naissance correspondante (en utilisant 2024 comme année de référence max)
+        birth_year_max = 2024 - int(age_min)  # L'âge min correspond à l'année de naissance max
+        birth_year_min = 2024 - int(age_max)  # L'âge max correspond à l'année de naissance min
 
     # normaliser filtres vehicule
     catv_filter = None if (catv_value in (None, "all")) else int(catv_value)
@@ -2987,7 +3065,8 @@ def update_graph_page_charts(
     Output("filter-atm", "value"),
     Output("filter-usager-sexe", "value"),
     Output("filter-usager-trajet", "value"),
-    Output("filter-usager-age", "value"),
+    Output("filter-usager-age-min", "value"),
+    Output("filter-usager-age-max", "value"),
     Output("filter-vehicule-catv", "value"),
     Output("filter-vehicule-motor", "value"),
     Input("btn-reset-filters", "n_clicks"),
@@ -2995,4 +3074,4 @@ def update_graph_page_charts(
 )
 def reset_graph_filters(_n_clicks):
     # Valeurs par défaut
-    return "all", "all", "all", "all", "all", "all", [1925, 2008], "all", "all"
+    return "all", "all", "all", "all", "all", "all", 18, 99, "all", "all"
