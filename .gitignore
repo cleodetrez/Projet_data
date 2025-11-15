@@ -16,6 +16,8 @@ venv/
 *.pyc
 *.pyo
 
+#video
+ACCIDENTOLOGIE_DASH.mp4
 
 # Dossier db cache
 db/__pycache__/
