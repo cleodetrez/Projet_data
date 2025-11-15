@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parent
 # ============================================================================
 
 def setup_data():
-    """Télécharge, nettoie et charge tout dans la DB."""
-    logger.info(" Initialisation des données...")
+    """Telecharge, nettoie et charge tout dans la DB."""
+    logger.info(" Initialisation des donnees...")
     
     try:
         # Imports locaux - Caractéristiques
@@ -68,28 +68,28 @@ def setup_data():
         }
         
         # ============ Nettoyer CARACTÉRISTIQUES (5 années) ============
-        logger.info("Traitement CARACTÉRISTIQUES...")
+        logger.info("Traitement CARACTERISTIQUES...")
         for year in caract_cleaners.keys():
             cleaned_path = ROOT / "data" / "cleaned" / f"caract_clean_{year}.csv"
             raw_path = ROOT / "data" / "raw" / f"caracteristiques-{year}.csv"
             
             if cleaned_path.exists():
-                logger.info(f"  ✓ caract_clean_{year}.csv existe déjà")
+                logger.info(f"caract_clean_{year}.csv existe deja")
                 continue
             
             if not raw_path.exists():
-                logger.info(f"  ↓ Téléchargement caracteristiques-{year}.csv...")
+                logger.info(f"Telechargement caracteristiques-{year}.csv...")
                 try:
                     caract_getters[year]()
-                    logger.info(f"  ✓ Téléchargement {year} terminé")
+                    logger.info(f"Telechargement {year} termine")
                 except Exception as e:
-                    logger.error(f" Erreur téléchargement caract {year}: {e}")
+                    logger.error(f" Erreur telechargement caract {year}: {e}")
                     continue
             
             logger.info(f" Nettoyage caract {year}...")
             try:
                 caract_cleaners[year]()
-                logger.info(f"  ✓ Nettoyage caract {year} terminé")
+                logger.info(f"Nettoyage caract {year} termine")
             except Exception as e:
                 logger.error(f" Erreur nettoyage caract {year}: {e}")
         
@@ -100,16 +100,16 @@ def setup_data():
             raw_path = ROOT / "data" / "raw" / f"radars-{year}.csv"
             
             if cleaned_path.exists():
-                logger.info(f"  ✓ radars_delta_clean_{year}.csv existe déjà")
+                logger.info(f"radars_delta_clean_{year}.csv existe deja")
                 continue
             
             if not raw_path.exists():
-                logger.info(f"  ↓ Téléchargement radars-{year}.csv...")
+                logger.info(f"Telechargement radars-{year}.csv...")
                 try:
                     radar_getters[year]()
-                    logger.info(f"  ✓ Téléchargement radars {year} terminé")
+                    logger.info(f"Telechargement radars {year} termine")
                 except Exception as e:
-                    logger.error(f" Erreur téléchargement radars {year}: {e}")
+                    logger.error(f" Erreur telechargement radars {year}: {e}")
                     continue
             
             logger.info(f" Nettoyage radars {year}...")
@@ -120,12 +120,12 @@ def setup_data():
                 logger.error(f" Erreur nettoyage radars {year}: {e}")
         
         # ============ Charger tout dans la DB ============
-        logger.info("Chargement en base de données...")
+        logger.info("Chargement en base de donnees...")
         load_csv_to_db()
-        logger.info("Données prêtes!")
+        logger.info("Donnees pretes!")
         
     except Exception as e:
-        logger.error(f"Erreur setup données: {e}")
+        logger.error(f"Erreur setup donnees: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

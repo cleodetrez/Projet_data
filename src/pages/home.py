@@ -10,7 +10,7 @@ import json
 import re
 
 import dash
-from dash import html, dcc, callback, Input, Output
+from dash import html, dcc, callback, Input, Output, State
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -1051,6 +1051,13 @@ def create_choropleth_page(carte_mode="dept", year=2023):
         for y in available_carte_years
     ]
 
+    # Affichage simple: une seule carte selon le mode + année courante
+    maps_content = html.Div(
+        [dcc.Graph(figure=fig, config={"responsive": True, "displayModeBar": True})],
+        className="page-card",
+        style={"padding": "20px", "flex": "1", "minWidth": "0"},
+    )
+
     return html.Div(
         [
             html.H2("carte choroplèthe des accidents"),
@@ -1078,14 +1085,13 @@ def create_choropleth_page(carte_mode="dept", year=2023):
                             "alignSelf": "flex-start",
                         },
                     ),
-                    html.Div(
-                        [dcc.Graph(figure=fig, config={"responsive": True, "displayModeBar": True})],
-                        className="page-card",
-                        style={"padding": "20px", "flex": "1", "minWidth": "0"},
-                    ),
+                    maps_content,
                 ],
                 style={"display": "flex", "gap": "24px", "alignItems": "flex-start"},
             ),
+            # Hidden flags to keep current mode/year in state
+            html.Div(carte_mode, id="carte-mode-flag", style={"display": "none"}),
+            html.Div(str(year), id="carte-year-flag", style={"display": "none"}),
         ],
         id="choropleth-page-container",
     )
@@ -1423,6 +1429,7 @@ def display_page(_about_clicks, _hist_clicks, _chor_clicks, _graph_clicks, _auth
         Input("btn-carte-commune", "n_clicks"),
         *[Input(f"btn-carte-year-{y}", "n_clicks") for y in _available_years()],
     ],
+    [State("carte-mode-flag", "children"), State("carte-year-flag", "children")],
     prevent_initial_call=True,
 )
 def update_carte_view(*_args):
@@ -1434,17 +1441,26 @@ def update_carte_view(*_args):
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
     
-    # Déterminer le mode (dept ou commune)
+    # Déterminer le mode (dept, region, ou commune)
     if button_id in ["btn-carte-region", "btn-carte-dept", "btn-carte-commune"]:
         mode = "region" if button_id == "btn-carte-region" else ("commune" if button_id == "btn-carte-commune" else "dept")
-        default_year = _available_years()[-1] if _available_years() else 2023
-        return create_choropleth_page(mode, default_year)
+        # garder l'année courante si possible
+        current_year_str = dash.callback_context.states.get("carte-year-flag.children")
+        try:
+            current_year = int(current_year_str) if current_year_str else None
+        except Exception:
+            current_year = None
+        year_to_use = current_year or (_available_years()[-1] if _available_years() else 2023)
+        return create_choropleth_page(mode, year_to_use)
     
     # Déterminer l'année
     m = re.match(r"btn-carte-year-(\d{4})", button_id)
     if m:
         year = int(m.group(1))
-        return create_choropleth_page("dept", year)
+        # lire le mode courant depuis le state caché
+        current_mode = dash.callback_context.states.get("carte-mode-flag.children")
+        mode = current_mode if current_mode in ("dept", "region", "commune") else "dept"
+        return create_choropleth_page(mode, year)
     
     default_year = _available_years()[-1] if _available_years() else 2023
     return create_choropleth_page("dept", default_year)
