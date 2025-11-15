@@ -1198,15 +1198,12 @@ graph_page = html.Div(
                             id="filter-usager-trajet",
                             options=[
                                 {"label": "tous", "value": "all"},
-                                {"label": "1", "value": 1},
-                                {"label": "2", "value": 2},
-                                {"label": "3", "value": 3},
-                                {"label": "4", "value": 4},
-                                {"label": "5", "value": 5},
-                                {"label": "6", "value": 6},
-                                {"label": "7", "value": 7},
-                                {"label": "8", "value": 8},
-                                {"label": "9", "value": 9},
+                                {"label": "domicile - travail", "value": 1},
+                                {"label": "domicile - école", "value": 2},
+                                {"label": "courses - achats", "value": 3},
+                                {"label": "professionnel", "value": 4},
+                                {"label": "promenade - loisirs", "value": 5},
+                                {"label": "autre", "value": 9},
                             ],
                             value="all",
                             clearable=False,
@@ -1215,10 +1212,10 @@ graph_page = html.Div(
                         html.Label("année de naissance", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
                         dcc.RangeSlider(
                             id="filter-usager-age",
-                            min=1914,
-                            max=2024,
+                            min=1925,
+                            max=2008,
                             step=1,
-                            value=[1914, 2024],
+                            value=[1925, 2008],
                             tooltip={"placement": "bottom", "always_visible": False},
                         ),
                         html.Label("année", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
@@ -1690,4 +1687,4 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value,
 )
 def reset_graph_filters(_n_clicks):
     # Valeurs par défaut
-    return "all", "all", "all", "all", "all", "all", [1914, 2024]
+    return "all", "all", "all", "all", "all", "all", [1925, 2008]
