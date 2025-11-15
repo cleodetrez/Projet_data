@@ -1046,27 +1046,12 @@ def _make_accidents_pie_chart(
     try:
 
         def _query_one(y: int) -> pd.DataFrame:
-            use_join = any(
-                v is not None
-                for v in (
-                    sexe_filter,
-                    trajet_filter,
-                    birth_year_min,
-                    birth_year_max,
-                    catv_filter,
-                    motor_filter,
-                )
-            )
-            # Pour 2024, pas de vehicule, utiliser caract_usager si filtres usager actifs
+            # Always use joined table since we're querying 'sexe' column from usager
             if y == 2024:
-                # Ignorer les filtres vehicule pour 2024
-                use_join_usager = any(
-                    v is not None
-                    for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max)
-                )
-                table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
+                # Pour 2024, pas de vehicule, utiliser caract_usager
+                table_name = f"caract_usager_{y}"
             else:
-                table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+                table_name = f"caract_usager_vehicule_{y}"
             where_parts = ["sexe IS NOT NULL"]
             params = {}
             if agg_filter in (1, 2):
@@ -1203,18 +1188,8 @@ def _make_catv_pie_chart(
             if y == 2024:
                 return pd.DataFrame()
 
-            use_join = any(
-                v is not None
-                for v in (
-                    sexe_filter,
-                    trajet_filter,
-                    birth_year_min,
-                    birth_year_max,
-                    catv_filter,
-                    motor_filter,
-                )
-            )
-            table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+            # Always use joined table since we're querying 'catv' column from vehicule
+            table_name = f"caract_usager_vehicule_{y}"
             where_parts = ["catv IS NOT NULL"]
             params = {}
             if agg_filter in (1, 2):
@@ -1368,18 +1343,8 @@ def _make_motor_pie_chart(
             if y == 2024:
                 return pd.DataFrame()
 
-            use_join = any(
-                v is not None
-                for v in (
-                    sexe_filter,
-                    trajet_filter,
-                    birth_year_min,
-                    birth_year_max,
-                    catv_filter,
-                    motor_filter,
-                )
-            )
-            table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+            # Always use joined table since we're querying 'motor' column from vehicule
+            table_name = f"caract_usager_vehicule_{y}"
             where_parts = ["motor IS NOT NULL"]
             params = {}
             if agg_filter in (1, 2):

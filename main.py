@@ -39,6 +39,19 @@ def setup_data():
         from src.utils.clean_radars_2021 import clean_radars as clean_radars_2021
         from src.utils.clean_radars_2023 import clean_radars as clean_radars_2023
         
+        # Imports locaux - Usagers
+        from src.utils.clean_usager_2020 import clean_usager_2020
+        from src.utils.clean_usager_2021 import clean_usager_2021
+        from src.utils.clean_usager_2022 import clean_usager_2022
+        from src.utils.clean_usager_2023 import clean_usager_2023
+        from src.utils.clean_usager_2024 import clean_usager_2024
+        
+        # Imports locaux - Vehicules
+        from src.utils.clean_vehicule_2020 import clean_vehicule_2020
+        from src.utils.clean_vehicule_2021 import clean_vehicule_2021
+        from src.utils.clean_vehicule_2022 import clean_vehicule_2022
+        from src.utils.clean_vehicule_2023 import clean_vehicule_2023
+        
         from load_to_db import load_csv_to_db
         
         caract_getters = {
@@ -65,6 +78,21 @@ def setup_data():
         radar_cleaners = {
             2021: clean_radars_2021,
             2023: clean_radars_2023,
+        }
+        
+        usager_cleaners = {
+            2020: clean_usager_2020,
+            2021: clean_usager_2021,
+            2022: clean_usager_2022,
+            2023: clean_usager_2023,
+            2024: clean_usager_2024,
+        }
+        
+        vehicule_cleaners = {
+            2020: clean_vehicule_2020,
+            2021: clean_vehicule_2021,
+            2022: clean_vehicule_2022,
+            2023: clean_vehicule_2023,
         }
         
         # ============ Nettoyer CARACTÉRISTIQUES (5 années) ============
@@ -118,6 +146,44 @@ def setup_data():
                 logger.info(f" Nettoyage radars {year} terminé")
             except Exception as e:
                 logger.error(f" Erreur nettoyage radars {year}: {e}")
+        
+        # ============ Nettoyer USAGERS (5 années) ============
+        logger.info("Traitement USAGERS...")
+        for year in usager_cleaners.keys():
+            cleaned_path = ROOT / "data" / "cleaned" / f"usager_clean_{year}.csv"
+            raw_path = ROOT / "data" / "raw" / f"usagers-{year}.csv"
+            
+            if cleaned_path.exists():
+                logger.info(f"usager_clean_{year}.csv existe deja")
+                continue
+            
+            logger.info(f" Nettoyage usagers {year}...")
+            try:
+                usager_cleaners[year]()
+                logger.info(f"Nettoyage usagers {year} termine")
+            except Exception as e:
+                logger.error(f" Erreur nettoyage usagers {year}: {e}")
+        
+        # ============ Nettoyer VEHICULES (4 années) ============
+        logger.info("Traitement VEHICULES...")
+        for year in vehicule_cleaners.keys():
+            cleaned_path = ROOT / "data" / "cleaned" / f"vehicule_clean_{year}.csv"
+            raw_path = ROOT / "data" / "raw" / f"vehicules-{year}.csv"
+            
+            if cleaned_path.exists():
+                logger.info(f"vehicule_clean_{year}.csv existe deja")
+                continue
+            
+            if not raw_path.exists():
+                logger.warning(f"Fichier brut vehicules-{year}.csv manquant, nettoyage ignoré")
+                continue
+            
+            logger.info(f" Nettoyage vehicules {year}...")
+            try:
+                vehicule_cleaners[year]()
+                logger.info(f"Nettoyage vehicules {year} termine")
+            except Exception as e:
+                logger.error(f" Erreur nettoyage vehicules {year}: {e}")
         
         # ============ Charger tout dans la DB ============
         logger.info("Chargement en base de donnees...")
