@@ -32,6 +32,10 @@ if config_path.exists():
             usager_csv_url_2022,
             usager_csv_url_2023,
             usager_csv_url_2024,
+            vehicule_csv_url_2020,
+            vehicule_csv_url_2021,
+            vehicule_csv_url_2022,
+            vehicule_csv_url_2023,
             raw_dir,
         )
     except ImportError:
@@ -50,6 +54,10 @@ if config_path.exists():
         usager_csv_url_2022 = ""  # type: ignore[assignment]
         usager_csv_url_2023 = ""  # type: ignore[assignment]
         usager_csv_url_2024 = ""  # type: ignore[assignment]
+        vehicule_csv_url_2020 = ""  # type: ignore[assignment]
+        vehicule_csv_url_2021 = ""  # type: ignore[assignment]
+        vehicule_csv_url_2022 = ""  # type: ignore[assignment]
+        vehicule_csv_url_2023 = ""  # type: ignore[assignment]
         raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
 else:
     caract_csv_url = ""  # type: ignore[assignment]
@@ -64,6 +72,10 @@ else:
     usager_csv_url_2022 = ""  # type: ignore[assignment]
     usager_csv_url_2023 = ""  # type: ignore[assignment]
     usager_csv_url_2024 = ""  # type: ignore[assignment]
+    vehicule_csv_url_2020 = ""  # type: ignore[assignment]
+    vehicule_csv_url_2021 = ""  # type: ignore[assignment]
+    vehicule_csv_url_2022 = ""  # type: ignore[assignment]
+    vehicule_csv_url_2023 = ""  # type: ignore[assignment]
     raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------
@@ -278,6 +290,32 @@ def get_usager_2023() -> pd.DataFrame:
 def get_usager_2024() -> pd.DataFrame:
     return _get_usager_generic(2024, usager_csv_url_2024)
 
+# ------------------------------------------------------------------
+# vehicule (nouveau jeu de données multi-année)
+# ------------------------------------------------------------------
+def _get_vehicule_generic(year: int, url: str) -> pd.DataFrame:
+    """Télécharge (si besoin) le CSV véhicules d'une année et le retourne brut."""
+    filename = f"vehicules-{year}.csv"
+    cleaned_path = raw_dir.parent / "cleaned" / f"vehicule_clean_{year}.csv"
+    raw_path = raw_dir / filename
+    if cleaned_path.exists():
+        return pd.read_csv(cleaned_path, low_memory=False, sep="," if cleaned_path.suffix == ".csv" else ";")
+    if raw_path.exists():
+        return pd.read_csv(raw_path, low_memory=False, sep=";")
+    return dl_csv(url, filename)
+
+def get_vehicule_2020() -> pd.DataFrame:
+    return _get_vehicule_generic(2020, vehicule_csv_url_2020)
+
+def get_vehicule_2021() -> pd.DataFrame:
+    return _get_vehicule_generic(2021, vehicule_csv_url_2021)
+
+def get_vehicule_2022() -> pd.DataFrame:
+    return _get_vehicule_generic(2022, vehicule_csv_url_2022)
+
+def get_vehicule_2023() -> pd.DataFrame:
+    return _get_vehicule_generic(2023, vehicule_csv_url_2023)
+
 
 def query_db(query: str, params: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
     """exécute une requête sql et retourne un dataframe."""
@@ -352,6 +390,25 @@ if __name__ == "__main__":
                 )
             except Exception as e:
                 logger.warning("echec chargement usagers %s : %s", year, e)
+
+        # Chargement multi-année des vehicules
+        vehicule_loaders = {
+            2020: get_vehicule_2020,
+            2021: get_vehicule_2021,
+            2022: get_vehicule_2022,
+            2023: get_vehicule_2023,
+        }
+        for year, fn in vehicule_loaders.items():
+            try:
+                df = fn()
+                logger.info(
+                    "vehicules %s : %d lignes, %d colonnes.",
+                    year,
+                    df.shape[0],
+                    df.shape[1],
+                )
+            except Exception as e:
+                logger.warning("echec chargement vehicules %s : %s", year, e)
 
     except Exception as err:  # garder large ici pour un script cli
         logger.error("erreur globale get_data : %s", err)

@@ -596,6 +596,8 @@ def _make_time_series(
     trajet_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
+    catv_filter: int | None = None,
+    motor_filter: int | None = None,
 ):
     """courbe : évolution du nombre d'accidents par heure/jour/mois.
 
@@ -610,8 +612,14 @@ def _make_time_series(
         unit = unit.lower()
 
         def _query_one(y: int) -> pd.DataFrame:
-            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max))
-            table_name = f"caract_usager_{y}" if use_join else f"caracteristiques_{y}"
+            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+            # Pour 2024, pas de vehicule, utiliser caract_usager si filtres usager actifs
+            if y == 2024:
+                # Ignorer les filtres vehicule pour 2024
+                use_join_usager = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max))
+                table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
+            else:
+                table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
             params: dict = {}
             where_parts = []
 
@@ -647,6 +655,14 @@ def _make_time_series(
                 where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
                 params["birth_year_min"] = birth_year_min
                 params["birth_year_max"] = birth_year_max
+
+            # vehicule filters
+            if catv_filter is not None:
+                where_parts.append("CAST(catv AS INTEGER) = :catv")
+                params["catv"] = catv_filter
+            if motor_filter is not None:
+                where_parts.append("CAST(motor AS INTEGER) = :motor")
+                params["motor"] = motor_filter
 
             where_clause = " AND ".join(where_parts) if where_parts else "1=1"
             sql = (
@@ -791,6 +807,8 @@ def _make_accidents_pie_chart(
     trajet_filter: int | None = None,
     birth_year_min: int | None = None,
     birth_year_max: int | None = None,
+    catv_filter: int | None = None,
+    motor_filter: int | None = None,
 ):
     """camembert : distribution des accidents par type d'agglomération.
 
@@ -798,8 +816,14 @@ def _make_accidents_pie_chart(
     """
     try:
         def _query_one(y: int) -> pd.DataFrame:
-            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max))
-            table_name = f"caract_usager_{y}" if use_join else f"caracteristiques_{y}"
+            use_join = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max, catv_filter, motor_filter))
+            # Pour 2024, pas de vehicule, utiliser caract_usager si filtres usager actifs
+            if y == 2024:
+                # Ignorer les filtres vehicule pour 2024
+                use_join_usager = any(v is not None for v in (sexe_filter, trajet_filter, birth_year_min, birth_year_max))
+                table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
+            else:
+                table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
             where_parts = ["agg IS NOT NULL"]
             params = {}
             if agg_filter in (1, 2):
@@ -821,6 +845,12 @@ def _make_accidents_pie_chart(
                 where_parts.append("CAST(an_nais AS INTEGER) BETWEEN :birth_year_min AND :birth_year_max")
                 params["birth_year_min"] = birth_year_min
                 params["birth_year_max"] = birth_year_max
+            if catv_filter is not None:
+                where_parts.append("CAST(catv AS INTEGER) = :catv")
+                params["catv"] = catv_filter
+            if motor_filter is not None:
+                where_parts.append("CAST(motor AS INTEGER) = :motor")
+                params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
             sql = (
                 f"SELECT agg, COUNT(*) AS count "
@@ -1218,6 +1248,72 @@ graph_page = html.Div(
                             value=[1925, 2008],
                             tooltip={"placement": "bottom", "always_visible": False},
                         ),
+                        html.Hr(style={"margin": "16px 0"}),
+                        html.H6(
+                            "Filtres véhicule",
+                            style={
+                                "color": "#6b5bd3",
+                                "fontWeight": "700",
+                                "marginBottom": "8px",
+                                "borderBottom": "2px solid #6b5bd3",
+                                "paddingBottom": "12px",
+                            },
+                        ),
+                        html.Label("catégorie véhicule", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.Dropdown(
+                            id="filter-vehicule-catv",
+                            options=[
+                                {"label": "tous", "value": "all"},
+                                {"label": "vélo", "value": 1},
+                                {"label": "cyclo <50cm3", "value": 2},
+                                {"label": "voiturette", "value": 3},
+                                {"label": "scooter immatriculé", "value": 30},
+                                {"label": "moto >50cm3", "value": 31},
+                                {"label": "scooter <50cm3", "value": 32},
+                                {"label": "moto >125cm3", "value": 33},
+                                {"label": "scooter >125cm3", "value": 34},
+                                {"label": "quad léger", "value": 40},
+                                {"label": "quad lourd", "value": 41},
+                                {"label": "cyclomoteur", "value": 42},
+                                {"label": "VL seul", "value": 7},
+                                {"label": "VL + caravane", "value": 10},
+                                {"label": "VL + remorque", "value": 13},
+                                {"label": "VU seul 1.5T-3.5T", "value": 14},
+                                {"label": "VU seul + 3.5T", "value": 15},
+                                {"label": "VU + remorque", "value": 16},
+                                {"label": "PL seul 3.5T-7.5T", "value": 17},
+                                {"label": "PL seul > 7.5T", "value": 18},
+                                {"label": "PL > 3.5T + remorque", "value": 19},
+                                {"label": "tracteur routier seul", "value": 20},
+                                {"label": "tracteur routier + semi-remorque", "value": 21},
+                                {"label": "transport en commun", "value": 37},
+                                {"label": "tramway", "value": 38},
+                                {"label": "EDP motorisé", "value": 50},
+                                {"label": "EDP non motorisé", "value": 60},
+                                {"label": "autre", "value": 99},
+                            ],
+                            value="all",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
+                        ),
+                        html.Label("motorisation", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.Dropdown(
+                            id="filter-vehicule-motor",
+                            options=[
+                                {"label": "tous", "value": "all"},
+                                {"label": "hydrocarbure", "value": 1},
+                                {"label": "électrique", "value": 2},
+                                {"label": "hydrogène", "value": 3},
+                                {"label": "humaine", "value": 4},
+                                {"label": "hybride", "value": 5},
+                                {"label": "GPL", "value": 6},
+                                {"label": "autre", "value": 9},
+                            ],
+                            value="all",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
+                        ),
+                        html.Hr(style={"margin": "16px 0"}),
                         html.Label("année", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
                         dcc.Dropdown(
                             id="filter-annee",
@@ -1598,12 +1694,14 @@ def update_histogram_year(*_args):
         Input("filter-usager-sexe", "value"),
         Input("filter-usager-trajet", "value"),
         Input("filter-usager-age", "value"),
+        Input("filter-vehicule-catv", "value"),
+        Input("filter-vehicule-motor", "value"),
         Input("btn-ts-hour", "n_clicks"),
         Input("btn-ts-day", "n_clicks"),
         Input("btn-ts-month", "n_clicks"),
     ],
 )
-def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value, trajet_value, age_range, _n_h, _n_d, _n_m):
+def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value, trajet_value, age_range, catv_value, motor_value, _n_h, _n_d, _n_m):
     """met à jour la courbe temporelle (heures/jours/mois) et le camembert."""
     ctx = dash.callback_context
     year = annee
@@ -1639,6 +1737,10 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value,
     if isinstance(age_range, (list, tuple)) and len(age_range) == 2:
         birth_year_min, birth_year_max = int(age_range[0]), int(age_range[1])
 
+    # normaliser filtres vehicule
+    catv_filter = None if (catv_value in (None, "all")) else int(catv_value)
+    motor_filter = None if (motor_value in (None, "all")) else int(motor_value)
+
     # déterminer l'unité depuis le bouton cliqué
     unit = "hour"
     if ctx.triggered:
@@ -1659,6 +1761,8 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value,
             trajet_filter=trajet_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
+            catv_filter=catv_filter,
+            motor_filter=motor_filter,
         ),
         _make_accidents_pie_chart(
             year,
@@ -1669,6 +1773,8 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value,
             trajet_filter=trajet_filter,
             birth_year_min=birth_year_min,
             birth_year_max=birth_year_max,
+            catv_filter=catv_filter,
+            motor_filter=motor_filter,
         ),
     )
 
@@ -1682,9 +1788,11 @@ def update_graph_page_charts(annee, agg_value, lum_value, atm_value, sexe_value,
     Output("filter-usager-sexe", "value"),
     Output("filter-usager-trajet", "value"),
     Output("filter-usager-age", "value"),
+    Output("filter-vehicule-catv", "value"),
+    Output("filter-vehicule-motor", "value"),
     Input("btn-reset-filters", "n_clicks"),
     prevent_initial_call=True,
 )
 def reset_graph_filters(_n_clicks):
     # Valeurs par défaut
-    return "all", "all", "all", "all", "all", "all", [1925, 2008]
+    return "all", "all", "all", "all", "all", "all", [1925, 2008], "all", "all"

@@ -27,5 +27,11 @@ usager_csv_url_2022 = "https://www.data.gouv.fr/api/1/datasets/r/62c20524-d442-4
 usager_csv_url_2021 = "https://www.data.gouv.fr/api/1/datasets/r/ba5a1956-7e82-41b7-a602-89d7dd484d7a"
 usager_csv_url_2020 = "https://www.data.gouv.fr/api/1/datasets/r/78c45763-d170-4d51-a881-e3147802d7ee"
 
+# URLs vehicule (ajout progressif par année)
+vehicule_csv_url_2023 = "https://www.data.gouv.fr/api/1/datasets/r/146a42f5-19f0-4b3e-a887-5cd8fbef057b"
+vehicule_csv_url_2022 = "https://www.data.gouv.fr/api/1/datasets/r/c9742921-4427-41e5-81bc-f13af8bc31a0"
+vehicule_csv_url_2021 = "https://www.data.gouv.fr/api/1/datasets/r/0bb5953a-25d8-46f8-8c25-b5c2f5ba905e"
+vehicule_csv_url_2020 = "https://www.data.gouv.fr/api/1/datasets/r/a66be22f-c346-49af-b196-71df24702250"
+
 data_dir = Path(os.getenv("data_dir", root / "data"))
 raw_dir = data_dir / "raw"

@@ -27,14 +27,14 @@ def load_csv_to_db(retries=3):
     all_files: dict[str, Path] = {}
     
     # Découvrir tous les fichiers caract_clean_YYYY.csv -> caracteristiques_YYYY
-    logger.info(f"Recherche fichiers nettoyés dans {CLEAN_DIR}...")
+    logger.info(f"Recherche fichiers nettoyes dans {CLEAN_DIR}...")
     for p in CLEAN_DIR.glob("caract_clean_*.csv"):
         m = re.search(r"(\d{4})", p.name)
         if not m:
             continue
         year = m.group(1)
         all_files[f"caracteristiques_{year}"] = p
-        logger.info(f"  → Trouvé: {p.name}")
+        logger.info(f"Trouve: {p.name}")
     
     # Découvrir tous les fichiers radars_delta_clean_YYYY.csv -> radars_YYYY
     for p in CLEAN_DIR.glob("radars_delta_clean_*.csv"):
@@ -43,7 +43,7 @@ def load_csv_to_db(retries=3):
             continue
         year = m.group(1)
         all_files[f"radars_{year}"] = p
-        logger.info(f"  → Trouvé: {p.name}")
+        logger.info(f"Trouve: {p.name}")
 
     # Découvrir tous les fichiers usager_clean_YYYY.csv -> usager_YYYY
     for p in CLEAN_DIR.glob("usager_clean_*.csv"):
@@ -52,13 +52,22 @@ def load_csv_to_db(retries=3):
             continue
         year = m.group(1)
         all_files[f"usager_{year}"] = p
-        logger.info(f"  → Trouvé: {p.name}")
+        logger.info(f"Trouve: {p.name}")
+
+    # Découvrir tous les fichiers vehicule_clean_YYYY.csv -> vehicule_YYYY
+    for p in CLEAN_DIR.glob("vehicule_clean_*.csv"):
+        m = re.search(r"(\d{4})", p.name)
+        if not m:
+            continue
+        year = m.group(1)
+        all_files[f"vehicule_{year}"] = p
+        logger.info(f"Trouve: {p.name}")
     
     if not all_files:
-        logger.warning(f"Aucun fichier nettoyé trouvé dans {CLEAN_DIR}")
+        logger.warning(f"Aucun fichier nettoye trouve dans {CLEAN_DIR}")
         return
     
-    logger.info(f"{len(all_files)} fichier(s) à charger:")
+    logger.info(f"{len(all_files)} fichier(s) a charger:")
     for table_name, csv_path in sorted(all_files.items()):
         if not csv_path.exists():
             logger.warning(f"Fichier manquant : {csv_path}")
@@ -67,56 +76,100 @@ def load_csv_to_db(retries=3):
         attempt = 0
         while attempt < retries:
             try:
-                logger.info(f"Chargement de {csv_path.name} → table '{table_name}'...")
+                logger.info(f"Chargement de {csv_path.name} table '{table_name}'...")
                 df = pd.read_csv(csv_path, low_memory=False)
                 
                 # Insérer dans la DB (remplace la table)
                 df.to_sql(table_name, engine, if_exists="replace", index=False)
-                logger.info(f"✓ {len(df)} lignes insérées dans '{table_name}'")
+                logger.info(f"{len(df)} lignes inserees dans '{table_name}'")
                 break
             
             except Exception as e:
                 attempt += 1
                 if attempt < retries:
                     wait = 2 ** attempt
-                    logger.warning(f"Tentative {attempt}/{retries} échouée pour {table_name}, réessai dans {wait}s...")
+                    logger.warning(f"Tentative {attempt}/{retries} echouee pour {table_name}, reessai dans {wait}s...")
                     time.sleep(wait)
                 else:
-                    logger.error(f"Erreur définitive pour {csv_path} : {e}")
+                    logger.error(f"Erreur definitive pour {csv_path} : {e}")
     
     engine.dispose()
     logger.info(f"Base de données mise à jour : {DATABASE_PATH}")
 
-    # Création des tables jointes caract/usager par année
+    # Création des tables jointes caract/usager/vehicule par année
     try:
         engine = create_engine(DATABASE_URL, connect_args={"timeout": 30})
         with engine.connect() as conn:
-            # Récupérer les années où les deux tables existent
+            # Récupérer les années où les tables existent
             caract_years = [re.search(r"caracteristiques_(\d{4})", t).group(1) for t in all_files.keys() if t.startswith("caracteristiques_")]  # type: ignore
             for year in sorted(caract_years):
                 usager_table = f"usager_{year}"
+                vehicule_table = f"vehicule_{year}"
                 caract_table = f"caracteristiques_{year}"
-                # Vérifier présence du fichier usager correspondant
-                if usager_table not in all_files:
-                    logger.info(f"Pas de table usager pour {year}, jointure ignorée")
+                
+                # Vérifier présence des tables correspondantes
+                has_usager = usager_table in all_files
+                # Pour 2024, ignorer vehicule même s'il existe
+                has_vehicule = vehicule_table in all_files and year != "2024"
+                
+                if not has_usager and not has_vehicule:
+                    logger.info(f"Pas de table usager/vehicule pour {year}, jointure ignorée")
                     continue
-                joined_table = f"caract_usager_{year}"
-                logger.info(f"Création table jointe {joined_table} (accidents x usagers {year})...")
+                
+                # Nom de table selon ce qui est joint
+                if has_usager and has_vehicule:
+                    joined_table = f"caract_usager_vehicule_{year}"
+                elif has_usager:
+                    joined_table = f"caract_usager_{year}"
+                else:
+                    joined_table = f"caract_vehicule_{year}"
+                
+                logger.info(f"Creation table jointe {joined_table} (accidents x usagers x vehicules {year})...")
+                
                 # Drop si existe
                 conn.execute(text(f"DROP TABLE IF EXISTS {joined_table}"))
-                # Création via LEFT JOIN pour ne pas perdre d'accidents
-                join_sql = f"""
-                CREATE TABLE {joined_table} AS
-                SELECT c.*, u.sexe, u.an_nais, u.trajet
-                FROM {caract_table} c
-                LEFT JOIN {usager_table} u ON c.acc_id = u.Num_Acc
-                """
+                
+                # Création via LEFT JOINs pour ne pas perdre d'accidents
+                # Vérifier les colonnes disponibles dans vehicule pour cette année
+                vehicule_cols = []
+                if has_vehicule:
+                    # Lire les colonnes du CSV vehicule pour cette année
+                    vehicule_csv = all_files[vehicule_table]
+                    df_vehicule_sample = pd.read_csv(vehicule_csv, nrows=0)
+                    vehicule_cols = [c for c in ["catv", "motor"] if c in df_vehicule_sample.columns]
+                
+                # Construire le SELECT dynamiquement selon les colonnes disponibles
+                if has_usager and has_vehicule:
+                    vehicule_select = ", ".join([f"v.{col}" for col in vehicule_cols]) if vehicule_cols else ""
+                    select_clause = f"c.*, u.sexe, u.an_nais, u.trajet{', ' + vehicule_select if vehicule_select else ''}"
+                    join_sql = f"""
+                    CREATE TABLE {joined_table} AS
+                    SELECT {select_clause}
+                    FROM {caract_table} c
+                    LEFT JOIN {usager_table} u ON c.acc_id = u.Num_Acc
+                    LEFT JOIN {vehicule_table} v ON c.acc_id = v.Num_Acc
+                    """
+                elif has_usager:
+                    join_sql = f"""
+                    CREATE TABLE {joined_table} AS
+                    SELECT c.*, u.sexe, u.an_nais, u.trajet
+                    FROM {caract_table} c
+                    LEFT JOIN {usager_table} u ON c.acc_id = u.Num_Acc
+                    """
+                else:  # has_vehicule only
+                    vehicule_select = ", ".join([f"v.{col}" for col in vehicule_cols])
+                    join_sql = f"""
+                    CREATE TABLE {joined_table} AS
+                    SELECT c.*, {vehicule_select}
+                    FROM {caract_table} c
+                    LEFT JOIN {vehicule_table} v ON c.acc_id = v.Num_Acc
+                    """
+                
                 conn.execute(text(join_sql))
-                logger.info(f"✓ Table {joined_table} créée")
+                logger.info(f"Table {joined_table} creee")
             conn.commit()
         engine.dispose()
     except Exception as e:
-        logger.error(f"Erreur création des tables jointes: {e}")
-
+        logger.error(f"Erreur creation des tables jointes: {e}")
 if __name__ == "__main__":
     load_csv_to_db()
