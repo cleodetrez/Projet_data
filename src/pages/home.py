@@ -233,7 +233,7 @@ def _make_departments_choropleth(year=2023):
             featureidkey="properties.code",
             projection="mercator",
             color_continuous_scale=[[0, "#1a2035"], [0.5, "#3ae7ff"], [1, "#ff57c2"]],
-            title="ACCIDENTOLOGIE PAR DÉPARTEMENT (FRANCE)",
+            title=f"ACCIDENTOLOGIE PAR DÉPARTEMENT (FRANCE) - {year}",
             hover_name="nom",
             hover_data={"dept": True, "accidents": True, "nom": False},
         )
@@ -332,7 +332,7 @@ def _make_communes_choropleth(year=2023):
             featureidkey="properties.code",
             projection="mercator",
             color_continuous_scale=[[0, "#1a2035"], [0.5, "#3ae7ff"], [1, "#ff57c2"]],
-            title="ACCIDENTOLOGIE PAR COMMUNE (FRANCE)",
+            title=f"ACCIDENTOLOGIE PAR COMMUNE (FRANCE) - {year}",
             hover_name="code_commune",
         )
         fig.update_geos(fitbounds="locations", visible=False)
@@ -400,7 +400,7 @@ def _make_regions_choropleth(year=2023):
             featureidkey="properties.code",
             projection="mercator",
             color_continuous_scale=[[0, "#1a2035"], [0.5, "#3ae7ff"], [1, "#ff57c2"]],
-            title="ACCIDENTOLOGIE PAR RÉGION (FRANCE)",
+            title=f"ACCIDENTOLOGIE PAR RÉGION (FRANCE) - {year}",
             hover_name="nom",
             hover_data={"region": True, "accidents": True, "nom": False},
         )
@@ -586,12 +586,13 @@ def _make_speed_histogram(year=2023):
         return fig
 
 
-def _make_time_series(year=2023, agg_filter: int | str | None = None, unit: str = "hour"):
+def _make_time_series(year=2023, agg_filter: int | str | None = None, lum_filter: int | str | None = None, atm_filter: int | str | None = None, unit: str = "hour"):
     """courbe : évolution du nombre d'accidents par heure/jour/mois.
 
     unit: "hour" | "day" | "month"
     year: 2021 | 2023 | "all" pour agréger plusieurs années.
     agg_filter: 1 (agglomération) | 2 (hors agglomération) | None
+    lum_filter: 1-5 (conditions de luminosité) | None
     """
     try:
         unit = unit or "hour"
@@ -615,6 +616,13 @@ def _make_time_series(year=2023, agg_filter: int | str | None = None, unit: str 
             if agg_filter in (1, 2):
                 where_parts.append("CAST(agg AS INTEGER) = :agg")
                 params["agg"] = agg_filter
+
+            if lum_filter in (1, 2, 3, 4, 5):
+                where_parts.append("CAST(lum AS INTEGER) = :lum")
+                params["lum"] = lum_filter
+            if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+                where_parts.append("CAST(atm AS INTEGER) = :atm")
+                params["atm"] = atm_filter
 
             where_clause = " AND ".join(where_parts) if where_parts else "1=1"
             sql = (
@@ -750,11 +758,12 @@ def _make_time_series(year=2023, agg_filter: int | str | None = None, unit: str 
         return fig
 
 
-def _make_accidents_pie_chart(year=2023, agg_filter: int | str | None = None):
+def _make_accidents_pie_chart(year=2023, agg_filter: int | str | None = None, lum_filter: int | str | None = None, atm_filter: int | str | None = None):
     """camembert : distribution des accidents par type d'agglomération.
 
     year: 2021 | 2023 | "all" pour agréger les deux années.
     agg_filter: 1 (agglomération) | 2 (hors agglomération) | "all" | None.
+    lum_filter: 1-5 (conditions de luminosité) | None
     """
     try:
         def _query_one(y: int) -> pd.DataFrame:
@@ -764,6 +773,12 @@ def _make_accidents_pie_chart(year=2023, agg_filter: int | str | None = None):
             if agg_filter in (1, 2):
                 where_parts.append("CAST(agg AS INTEGER) = :agg")
                 params["agg"] = agg_filter
+            if lum_filter in (1, 2, 3, 4, 5):
+                where_parts.append("CAST(lum AS INTEGER) = :lum")
+                params["lum"] = lum_filter
+            if atm_filter in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+                where_parts.append("CAST(atm AS INTEGER) = :atm")
+                params["atm"] = atm_filter
             where_clause = " AND ".join(where_parts)
             sql = (
                 f"SELECT agg, COUNT(*) AS count "
@@ -1155,6 +1170,25 @@ graph_page = html.Div(
                             clearable=False,
                             style={"marginBottom": "12px"},
                         ),
+                        html.Label("conditions atmosphériques", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
+                        dcc.Dropdown(
+                            id="filter-atm",
+                            options=[
+                                {"label": "toutes", "value": "all"},
+                                {"label": "normale", "value": 1},
+                                {"label": "pluie légère", "value": 2},
+                                {"label": "pluie forte", "value": 3},
+                                {"label": "neige/grêle", "value": 4},
+                                {"label": "brouillard/fumée", "value": 5},
+                                {"label": "vent fort/tempête", "value": 6},
+                                {"label": "éblouissant", "value": 7},
+                                {"label": "couvert", "value": 8},
+                                {"label": "autre", "value": 9},
+                            ],
+                            value="all",
+                            clearable=False,
+                            style={"marginBottom": "12px"},
+                        ),
                         html.Label("agglomération", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "6px"}),
                         dcc.Dropdown(
                             id="filter-agglomeration",
@@ -1488,12 +1522,14 @@ def update_histogram_year(*_args):
     [
         Input("filter-annee", "value"),
         Input("filter-agglomeration", "value"),
+        Input("filter-luminosite", "value"),
+        Input("filter-atm", "value"),
         Input("btn-ts-hour", "n_clicks"),
         Input("btn-ts-day", "n_clicks"),
         Input("btn-ts-month", "n_clicks"),
     ],
 )
-def update_graph_page_charts(annee, agg_value, _n_h, _n_d, _n_m):
+def update_graph_page_charts(annee, agg_value, lum_value, atm_value, _n_h, _n_d, _n_m):
     """met à jour la courbe temporelle (heures/jours/mois) et le camembert."""
     ctx = dash.callback_context
     year = annee
@@ -1506,6 +1542,22 @@ def update_graph_page_charts(annee, agg_value, _n_h, _n_d, _n_m):
     else:
         agg_filter = None
 
+    # normaliser la luminosité
+    if lum_value in (1, 2, 3, 4, 5):
+        lum_filter = lum_value
+    elif isinstance(lum_value, str) and lum_value in ("1", "2", "3", "4", "5"):
+        lum_filter = int(lum_value)
+    else:
+        lum_filter = None
+
+    # normaliser les conditions atmosphériques
+    if atm_value in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+        atm_filter = atm_value
+    elif isinstance(atm_value, str) and atm_value in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
+        atm_filter = int(atm_value)
+    else:
+        atm_filter = None
+
     # déterminer l'unité depuis le bouton cliqué
     unit = "hour"
     if ctx.triggered:
@@ -1516,6 +1568,20 @@ def update_graph_page_charts(annee, agg_value, _n_h, _n_d, _n_m):
             unit = "month"
 
     return (
-        _make_time_series(year, agg_filter=agg_filter, unit=unit),
-        _make_accidents_pie_chart(year, agg_filter=agg_filter),
+        _make_time_series(year, agg_filter=agg_filter, lum_filter=lum_filter, atm_filter=atm_filter, unit=unit),
+        _make_accidents_pie_chart(year, agg_filter=agg_filter, lum_filter=lum_filter, atm_filter=atm_filter),
     )
+
+
+# Réinitialisation des filtres de la page graphique
+@callback(
+    Output("filter-annee", "value"),
+    Output("filter-agglomeration", "value"),
+    Output("filter-luminosite", "value"),
+    Output("filter-atm", "value"),
+    Input("btn-reset-filters", "n_clicks"),
+    prevent_initial_call=True,
+)
+def reset_graph_filters(_n_clicks):
+    # Valeurs par défaut: toutes
+    return "all", "all", "all", "all"
