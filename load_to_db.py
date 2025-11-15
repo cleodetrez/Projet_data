@@ -110,7 +110,7 @@ def load_csv_to_db(retries=3):
                 # Vérifier présence des tables correspondantes
                 has_usager = usager_table in all_files
                 # Pour 2024, ignorer vehicule même s'il existe
-                has_vehicule = vehicule_table in all_files and year != "2024"
+                has_vehicule = vehicule_table in all_files
                 
                 if not has_usager and not has_vehicule:
                     logger.info(f"Pas de table usager/vehicule pour {year}, jointure ignorée")

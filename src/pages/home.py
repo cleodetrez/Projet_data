@@ -788,7 +788,7 @@ def _make_time_series(
         unit = unit.lower()
 
         def _query_one(y: int) -> pd.DataFrame:
-            use_join = any(
+            need_join = any(
                 v is not None
                 for v in (
                     sexe_filter,
@@ -800,16 +800,7 @@ def _make_time_series(
                     motor_filter,
                 )
             )
-            # Pour 2024, pas de vehicule, utiliser caract_usager si filtres usager actifs
-            if y == 2024:
-                # Ignorer les filtres vehicule pour 2024
-                use_join_usager = any(
-                    v is not None
-                    for v in (sexe_filter, trajet_filter, grav_filter, birth_year_min, birth_year_max)
-                )
-                table_name = f"caract_usager_{y}" if use_join_usager else f"caracteristiques_{y}"
-            else:
-                table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+            table_name = f"caract_usager_vehicule_{y}" if need_join else f"caracteristiques_{y}"
             
             # Les colonnes lum et atm sont toujours dans caracteristiques, donc OK
             params: dict = {}
@@ -1055,11 +1046,7 @@ def _make_accidents_pie_chart(
 
         def _query_one(y: int) -> pd.DataFrame:
             # Always use joined table since we're querying 'sexe' column from usager
-            if y == 2024:
-                # Pour 2024, pas de vehicule, utiliser caract_usager
-                table_name = f"caract_usager_{y}"
-            else:
-                table_name = f"caract_usager_vehicule_{y}"
+            table_name = f"caract_usager_vehicule_{y}"
             where_parts = ["sexe IS NOT NULL"]
             params = {}
             if agg_filter in (1, 2):
@@ -1198,10 +1185,6 @@ def _make_catv_pie_chart(
     try:
 
         def _query_one(y: int) -> pd.DataFrame:
-            # Pour 2024, pas de données vehicule
-            if y == 2024:
-                return pd.DataFrame()
-
             # Always use joined table since we're querying 'catv' column from vehicule
             table_name = f"caract_usager_vehicule_{y}"
             where_parts = ["catv IS NOT NULL"]
@@ -1242,7 +1225,7 @@ def _make_catv_pie_chart(
 
         if isinstance(year, str) and year == "all":
             dfs = []
-            for y in [2020, 2021, 2022, 2023]:
+            for y in [2020, 2021, 2022, 2023, 2024]:
                 df = _query_one(y)
                 if df is not None and not df.empty:
                     dfs.append(df)
@@ -1357,10 +1340,6 @@ def _make_motor_pie_chart(
     try:
 
         def _query_one(y: int) -> pd.DataFrame:
-            # Pour 2024, pas de données vehicule
-            if y == 2024:
-                return pd.DataFrame()
-
             # Always use joined table since we're querying 'motor' column from vehicule
             table_name = f"caract_usager_vehicule_{y}"
             where_parts = ["motor IS NOT NULL"]
@@ -1401,7 +1380,7 @@ def _make_motor_pie_chart(
 
         if isinstance(year, str) and year == "all":
             dfs = []
-            for y in [2020, 2021, 2022, 2023]:
+            for y in [2020, 2021, 2022, 2023, 2024]:
                 df = _query_one(y)
                 if df is not None and not df.empty:
                     dfs.append(df)
@@ -1496,23 +1475,8 @@ def _make_catv_gender_bar_chart(
     try:
 
         def _query_one(y: int) -> pd.DataFrame:
-            # Pour 2024, pas de données vehicule
-            if y == 2024:
-                return pd.DataFrame()
-
-            use_join = any(
-                v is not None
-                for v in (
-                    sexe_filter,
-                    trajet_filter,
-                    grav_filter,
-                    birth_year_min,
-                    birth_year_max,
-                    catv_filter,
-                    motor_filter,
-                )
-            )
-            table_name = f"caract_usager_vehicule_{y}" if use_join else f"caracteristiques_{y}"
+            # Always use joined table since we're querying 'catv' and 'sexe' columns
+            table_name = f"caract_usager_vehicule_{y}"
             where_parts = ["catv IS NOT NULL", "sexe IS NOT NULL"]
             params = {}
             if agg_filter in (1, 2):
@@ -1551,7 +1515,7 @@ def _make_catv_gender_bar_chart(
 
         if isinstance(year, str) and year == "all":
             dfs = []
-            for y in [2020, 2021, 2022, 2023]:
+            for y in [2020, 2021, 2022, 2023, 2024]:
                 df = _query_one(y)
                 if df is not None and not df.empty:
                     dfs.append(df)
@@ -1734,11 +1698,8 @@ def _make_age_histogram(
             age_max_filter = 2024 - birth_year_min
 
         def _query_one(y: int) -> pd.DataFrame:
-            # Toujours besoin de usager pour an_nais
-            if y == 2024:
-                table_name = "caract_usager_2024"
-            else:
-                table_name = f"caract_usager_vehicule_{y}"
+            # Always use joined table when querying with usager columns
+            table_name = f"caract_usager_vehicule_{y}"
 
             where_parts = ["an_nais IS NOT NULL", "CAST(an_nais AS INTEGER) > 0"]
             params = {}
@@ -1761,13 +1722,12 @@ def _make_age_histogram(
                 where_parts.append("CAST(grav AS INTEGER) = :grav")
                 params["grav"] = grav_filter
             # NE PAS filtrer par birth_year dans la requête SQL
-            if y != 2024:
-                if catv_filter is not None:
-                    where_parts.append("CAST(catv AS INTEGER) = :catv")
-                    params["catv"] = catv_filter
-                if motor_filter is not None:
-                    where_parts.append("CAST(motor AS INTEGER) = :motor")
-                    params["motor"] = motor_filter
+            if catv_filter is not None:
+                where_parts.append("CAST(catv AS INTEGER) = :catv")
+                params["catv"] = catv_filter
+            if motor_filter is not None:
+                where_parts.append("CAST(motor AS INTEGER) = :motor")
+                params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
             sql = f"SELECT an_nais, annee, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY an_nais, annee"
             return query_db(sql, params)
@@ -1952,10 +1912,8 @@ def _make_age_tranche_histogram(
             age_max_filter = 2024 - birth_year_min
         
         def _query_one(y: int) -> pd.DataFrame:
-            if y == 2024:
-                table_name = "caract_usager_2024"
-            else:
-                table_name = f"caract_usager_vehicule_{y}"
+            # Always use joined table when querying with usager columns
+            table_name = f"caract_usager_vehicule_{y}"
             where_parts = ["an_nais IS NOT NULL", "CAST(an_nais AS INTEGER) > 0"]
             params = {}
             if agg_filter in (1, 2):
@@ -1977,13 +1935,12 @@ def _make_age_tranche_histogram(
                 where_parts.append("CAST(grav AS INTEGER) = :grav")
                 params["grav"] = grav_filter
             # NE PAS filtrer par birth_year dans la requête SQL
-            if y != 2024:
-                if catv_filter is not None:
-                    where_parts.append("CAST(catv AS INTEGER) = :catv")
-                    params["catv"] = catv_filter
-                if motor_filter is not None:
-                    where_parts.append("CAST(motor AS INTEGER) = :motor")
-                    params["motor"] = motor_filter
+            if catv_filter is not None:
+                where_parts.append("CAST(catv AS INTEGER) = :catv")
+                params["catv"] = catv_filter
+            if motor_filter is not None:
+                where_parts.append("CAST(motor AS INTEGER) = :motor")
+                params["motor"] = motor_filter
             where_clause = " AND ".join(where_parts)
             sql = f"SELECT an_nais, annee, COUNT(*) AS count FROM {table_name} WHERE {where_clause} GROUP BY an_nais, annee"
             return query_db(sql, params)
@@ -2545,20 +2502,12 @@ graph_page = html.Div(
                                     style={"marginRight": "6px", "color": "#ff9800"},
                                 ),
                                 html.Span(
-                                    "⚠️ Les données véhicule pour l'année 2024 ne sont pas disponibles.",
-                                    style={
-                                        "fontSize": "11px",
-                                        "color": "#ff9800",
-                                        "fontStyle": "italic",
-                                    },
+                                    "",  # message retiré (véhicules 2024 désormais disponibles)
                                 ),
                             ],
                             style={
-                                "backgroundColor": "rgba(255, 152, 0, 0.1)",
-                                "padding": "8px",
-                                "borderRadius": "6px",
-                                "marginBottom": "12px",
-                                "border": "1px solid rgba(255, 152, 0, 0.3)",
+                                # style conservé pour ne pas casser la mise en page; vide désormais
+                                "display": "none",
                             },
                         ),
                         html.Label(

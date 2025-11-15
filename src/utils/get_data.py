@@ -36,6 +36,7 @@ if config_path.exists():
             vehicule_csv_url_2021,
             vehicule_csv_url_2022,
             vehicule_csv_url_2023,
+            vehicule_csv_url_2024,
             raw_dir,
         )
     except ImportError:
@@ -58,6 +59,7 @@ if config_path.exists():
         vehicule_csv_url_2021 = ""  # type: ignore[assignment]
         vehicule_csv_url_2022 = ""  # type: ignore[assignment]
         vehicule_csv_url_2023 = ""  # type: ignore[assignment]
+        vehicule_csv_url_2024 = ""  # type: ignore[assignment]
         raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
 else:
     caract_csv_url = ""  # type: ignore[assignment]
@@ -76,6 +78,7 @@ else:
     vehicule_csv_url_2021 = ""  # type: ignore[assignment]
     vehicule_csv_url_2022 = ""  # type: ignore[assignment]
     vehicule_csv_url_2023 = ""  # type: ignore[assignment]
+    vehicule_csv_url_2024 = ""  # type: ignore[assignment]
     raw_dir = Path(__file__).resolve().parents[2] / "data" / "raw"  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------
@@ -327,6 +330,10 @@ def get_vehicule_2023() -> pd.DataFrame:
     """Retourne le dataset véhicules 2023 (brut ou nettoyé si dispo)."""
     return _get_vehicule_generic(2023, vehicule_csv_url_2023)
 
+def get_vehicule_2024() -> pd.DataFrame:
+    """Retourne le dataset véhicules 2024 (brut ou nettoyé si dispo)."""
+    return _get_vehicule_generic(2024, vehicule_csv_url_2024)
+
 
 def query_db(query: str, params: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
     """exécute une requête sql et retourne un dataframe."""
@@ -408,6 +415,7 @@ if __name__ == "__main__":
             2021: get_vehicule_2021,
             2022: get_vehicule_2022,
             2023: get_vehicule_2023,
+            2024: get_vehicule_2024,
         }
         for yr, fn in vehicule_loaders.items():
             try:

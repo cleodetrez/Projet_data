@@ -32,7 +32,8 @@ def setup_data():
             get_radar_2021, get_radar_2023,
             get_usager_2020, get_usager_2021, get_usager_2022,
             get_usager_2023, get_usager_2024,
-            get_vehicule_2020, get_vehicule_2021, get_vehicule_2022, get_vehicule_2023
+            get_vehicule_2020, get_vehicule_2021, get_vehicule_2022, get_vehicule_2023,
+            get_vehicule_2024,
         )
         from src.utils.clean_caract_2020 import clean_caracteristiques as clean_caract_2020
         from src.utils.clean_caract_2021 import clean_caracteristiques as clean_caract_2021
@@ -56,6 +57,7 @@ def setup_data():
         from src.utils.clean_vehicule_2021 import clean_vehicule_2021
         from src.utils.clean_vehicule_2022 import clean_vehicule_2022
         from src.utils.clean_vehicule_2023 import clean_vehicule_2023
+        from src.utils.clean_vehicule_2024 import clean_vehicule_2024
         
         from load_to_db import load_csv_to_db
         
@@ -106,6 +108,7 @@ def setup_data():
             2021: clean_vehicule_2021,
             2022: clean_vehicule_2022,
             2023: clean_vehicule_2023,
+            2024: clean_vehicule_2024,
         }
         
         vehicule_getters = {
@@ -113,6 +116,7 @@ def setup_data():
             2021: get_vehicule_2021,
             2022: get_vehicule_2022,
             2023: get_vehicule_2023,
+            2024: get_vehicule_2024,
         }
         
         # ============ Nettoyer CARACTÉRISTIQUES (5 années) ============
