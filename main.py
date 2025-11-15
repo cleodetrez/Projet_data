@@ -253,11 +253,50 @@ app.layout = home_layout
 if __name__ == "__main__":
     # Setup données une fois au démarrage (pas en debug reload)
     import os
+    from pathlib import Path
+    from sqlalchemy import create_engine, inspect
+    
     # Werkzeug sets this to "true" on debug reloads; we only run setup on the FIRST launch
     werkzeug_run = os.environ.get("WERKZEUG_RUN_MAIN")
     logger.info(f"WERKZEUG_RUN_MAIN={werkzeug_run}")
     
+    # Vérifier si les tables jointes existent
+    db_path = ROOT / "bdd" / "database.db"
+    need_setup = False
+    
+    if not db_path.exists():
+        logger.info("Base de données inexistante, setup requis")
+        need_setup = True
+    else:
+        try:
+            engine = create_engine(f"sqlite:///{db_path.as_posix()}")
+            inspector = inspect(engine)
+            tables = inspector.get_table_names()
+            
+            # Vérifier si les tables jointes essentielles existent
+            required_tables = [
+                "caract_usager_vehicule_2021",
+                "caract_usager_vehicule_2022", 
+                "caract_usager_vehicule_2023"
+            ]
+            missing_tables = [t for t in required_tables if t not in tables]
+            
+            if missing_tables:
+                logger.warning(f"Tables manquantes: {missing_tables}")
+                logger.info("Rechargement de la base nécessaire")
+                need_setup = True
+            else:
+                logger.info("Toutes les tables jointes présentes")
+            
+            engine.dispose()
+        except Exception as e:
+            logger.error(f"Erreur vérification DB: {e}")
+            need_setup = True
+    
     if werkzeug_run != "true":
+        setup_data()
+    elif need_setup:
+        logger.info("Tables manquantes détectées, rechargement forcé...")
         setup_data()
     else:
         logger.info("(Debug reload detected; skipping setup_data)")
