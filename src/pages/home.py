@@ -31,6 +31,11 @@ except ImportError:  # pragma: no cover
     def query_db(*_args, **_kwargs):
         raise ImportError("src.utils.get_data introuvable")
 
+try:
+    from src.pages import about  # type: ignore
+except ImportError:  # pragma: no cover
+    about = None
+
 
 # mapping département -> région (codes régions 2016)
 DEPT_TO_REGION: dict[str, str] = {
@@ -2077,40 +2082,7 @@ def _make_age_tranche_histogram(
 # pages de contenu
 # ============================================================================
 
-about_page = html.Div(
-    [
-        html.H2(
-            "à propos",
-            style={
-                "paddingBottom": "10px",
-            },
-        ),
-        html.Div(
-            [
-                html.P(
-                    (
-                        "ce dashboard analyse les accidents de la circulation routière "
-                        "et les vitesses relevées par radars en france (2023)."
-                    ),
-                    style={"fontSize": "16px", "lineHeight": "1.6"},
-                ),
-                html.P(
-                    (
-                        "les données proviennent de sources publiques (data.gouv.fr) "
-                        "et permettent une visualisation complète de l’accidentologie."
-                    ),
-                    style={"fontSize": "16px", "lineHeight": "1.6"},
-                ),
-                html.P(
-                    "sources : data.gouv.fr — données publiques",
-                    style={"fontSize": "14px", "color": "#7f8c8d", "marginTop": "20px"},
-                ),
-            ],
-            className="page-card",
-            style={"padding": "24px"},
-        ),
-    ]
-)
+about_page = about.layout() if about else html.Div("page à propos non disponible")
 
 
 def create_histogram_page(year=2023):
@@ -2934,18 +2906,18 @@ graph_page = html.Div(
 
 authors_page = html.Div(
     [
-        html.H2("auteurs et crédits"),
+        html.H2("Auteurs et Crédits"),
         html.Div(
             [
                 html.Div(
                     [
-                        html.H3("auteurs", style={"marginBottom": "8px"}),
+                        html.H3("Auteurs", style={"marginBottom": "8px"}),
                         html.P(
                             "Iris Carron et Cléo Detrez — Novembre 2025",
                             style={"fontSize": "16px", "color": "var(--text-300)"},
                         ),
                         html.Hr(style={"margin": "16px 0", "borderColor": "var(--border)"}),
-                        html.H3("sources", style={"marginBottom": "8px"}),
+                        html.H3("Sources", style={"marginBottom": "8px"}),
                         html.Ul(
                             [
                                 html.Li(
@@ -2963,6 +2935,15 @@ authors_page = html.Div(
                                         target="_blank",
                                         style={"color": "var(--accent-pink)"},
                                     )
+                                ),
+                                html.Li(
+                                    html.A(
+                                        "gregoiredavid/france-geojson",
+                                        href="https://github.com/gregoiredavid/france-geojson",
+                                        target="_blank",
+                                        style={"color": "#00d4ff"},
+                                    ),
+                                    style={"marginTop": "4px"},
                                 ),
                             ],
                             style={"marginLeft": "18px", "lineHeight": "1.9"},
