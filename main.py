@@ -5,6 +5,8 @@ import logging
 from pathlib import Path
 import re
 
+import pandas as pd
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -119,7 +121,22 @@ def setup_data():
             cleaned_path = ROOT / "data" / "cleaned" / f"caract_clean_{year}.csv"
             raw_path = ROOT / "data" / "raw" / f"caracteristiques-{year}.csv"
             
+            # Vérifier si le fichier nettoyé a la bonne structure (avec acc_id)
+            needs_recleaning = False
             if cleaned_path.exists():
+                try:
+                    df_check = pd.read_csv(cleaned_path, nrows=0)
+                    if "acc_id" not in df_check.columns and ("Num_Acc" in df_check.columns or "Accident_Id" in df_check.columns):
+                        logger.warning(f"caract_clean_{year}.csv utilise l'ancien format (sans acc_id), re-nettoyage...")
+                        needs_recleaning = True
+                        cleaned_path.unlink()  # Supprimer l'ancien fichier
+                except Exception as e:
+                    logger.warning(f"Erreur lecture {cleaned_path.name}: {e}, re-nettoyage...")
+                    needs_recleaning = True
+                    if cleaned_path.exists():
+                        cleaned_path.unlink()
+            
+            if cleaned_path.exists() and not needs_recleaning:
                 logger.info(f"caract_clean_{year}.csv existe deja")
                 continue
             
@@ -260,6 +277,9 @@ if __name__ == "__main__":
     werkzeug_run = os.environ.get("WERKZEUG_RUN_MAIN")
     logger.info(f"WERKZEUG_RUN_MAIN={werkzeug_run}")
     
+    # Flag pour éviter la boucle infinie de rechargement
+    setup_done_flag = ROOT / "bdd" / ".setup_done"
+    
     # Vérifier si les tables jointes existent
     db_path = ROOT / "bdd" / "database.db"
     need_setup = False
@@ -275,6 +295,7 @@ if __name__ == "__main__":
             
             # Vérifier si les tables jointes essentielles existent
             required_tables = [
+                "caract_usager_vehicule_2020",
                 "caract_usager_vehicule_2021",
                 "caract_usager_vehicule_2022", 
                 "caract_usager_vehicule_2023"
@@ -283,21 +304,38 @@ if __name__ == "__main__":
             
             if missing_tables:
                 logger.warning(f"Tables manquantes: {missing_tables}")
-                logger.info("Rechargement de la base nécessaire")
-                need_setup = True
+                # Ne recharger que si ce n'est pas un reload de debug OU si le flag n'existe pas
+                if werkzeug_run != "true" or not setup_done_flag.exists():
+                    logger.info("Rechargement de la base nécessaire")
+                    need_setup = True
+                else:
+                    logger.error(f"Tables toujours manquantes après setup: {missing_tables}")
+                    logger.error("Vérifiez les erreurs dans les logs ci-dessus")
+                    logger.info("Lancement du dashboard malgré les tables manquantes...")
             else:
                 logger.info("Toutes les tables jointes présentes")
+                # Créer le flag si toutes les tables sont présentes
+                if not setup_done_flag.exists():
+                    setup_done_flag.touch()
             
             engine.dispose()
         except Exception as e:
             logger.error(f"Erreur vérification DB: {e}")
-            need_setup = True
+            if werkzeug_run != "true":
+                need_setup = True
     
     if werkzeug_run != "true":
+        # Supprimer le flag au premier lancement
+        if setup_done_flag.exists():
+            setup_done_flag.unlink()
         setup_data()
+        # Créer le flag après setup réussi
+        setup_done_flag.touch()
     elif need_setup:
-        logger.info("Tables manquantes détectées, rechargement forcé...")
+        logger.info("Tables manquantes détectées, rechargement forcé (une seule fois)...")
         setup_data()
+        # Créer le flag pour éviter la boucle
+        setup_done_flag.touch()
     else:
         logger.info("(Debug reload detected; skipping setup_data)")
     
